@@ -1,17 +1,25 @@
-name: Publish npm package
+name: Publish to npm
 
 on:
   workflow_dispatch:
+    inputs:
+      npm-tag:
+        description: npm distribution tag
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - latest
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
     name: Build, test and publish
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -20,7 +28,6 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           version: 11.16.0
-          run_install: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -28,15 +35,14 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and test
+      - name: Validate package
         run: pnpm run check
 
-      - name: Publish beta
-        run: npm publish --access public --tag beta
+      - name: Publish package
+        run: npm publish --access public --tag "${{ inputs.npm-tag }}" --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
