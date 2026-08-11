@@ -1,10 +1,12 @@
-import type { API } from 'homebridge';
+import type { PluginInitializer } from 'homebridge';
 import { MagicHomePlatform } from './platform.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 
-export default (api: API): void => {
+const initializer: PluginInitializer = (api): void => {
   api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, MagicHomePlatform);
 };
+
+export default initializer;
 
 export { MagicHomePlatform } from './platform.js';
 export { discoverDevices, parseDiscoveryReply } from './discovery.js';

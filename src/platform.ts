@@ -1,4 +1,6 @@
-import type { API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, Service } from 'homebridge';
+import type {
+  API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service,
+} from 'homebridge';
 import { MagicHomeAccessory } from './accessory.js';
 import { normalizeConfig } from './config.js';
 import { discoverDevices } from './discovery.js';
@@ -22,7 +24,7 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
   private scanPromise: Promise<Set<string>> | undefined;
   private readonly abortController = new AbortController();
 
-  constructor(readonly log: Logger, rawConfig: unknown, readonly api: API) {
+  constructor(readonly log: Logger, rawConfig: PlatformConfig, readonly api: API) {
     this.Service = api.hap.Service;
     this.Characteristic = api.hap.Characteristic;
     this.config = normalizeConfig(rawConfig);
