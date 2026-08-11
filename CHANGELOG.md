@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Correct MagicHome model capability detection, including identifying `0x41` controllers as single-channel LED dimmers and removing inappropriate colour controls.
+
 ## 0.3.0
 
 - Let users add or update controllers found by the diagnostic scan directly from the Homebridge UI.
