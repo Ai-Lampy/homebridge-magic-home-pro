@@ -4,10 +4,19 @@ import { readCachedContext, stableDeviceId } from '../src/identity.js';
 
 describe('configuration and identity', () => {
   it('defaults missing and partial nested objects safely', () => {
-    const config = normalizeConfig({ discovery: { retries: 99, subnetProbe: null }, devices: [{ host: 'bad' }, { host: '192.168.1.2' }] });
+    const config = normalizeConfig({
+      discovery: { retries: 99, subnetProbe: null },
+      devices: [{ host: 'bad' }, {
+        host: '192.168.1.2', location: 'Kitchen', deviceType: 'led-strip', cctControl: true,
+        colorControl: 'rgbwwcw', colorOrder: 'GRBWC',
+      }],
+    });
     expect(config.discovery.retries).toBe(10);
     expect(config.discovery.subnetProbe.enabled).toBe(false);
     expect(config.devices).toHaveLength(1);
+    expect(config.devices[0]).toMatchObject({
+      location: 'Kitchen', deviceType: 'led-strip', cctControl: true, colorControl: 'rgbwwcw', colorOrder: 'GRBWC',
+    });
   });
 
   it('uses normalized MAC rather than changing IP for identity', () => {

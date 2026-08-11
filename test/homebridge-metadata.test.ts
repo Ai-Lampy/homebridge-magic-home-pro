@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.3.1',
+      version: '0.4.0',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -40,8 +40,11 @@ describe('Homebridge plugin metadata', () => {
   it('publishes a Homebridge UI fragment rather than a complete HTML document', () => {
     const ui = fs.readFileSync('homebridge-ui/public/index.html', 'utf8');
     expect(ui).not.toMatch(/<(?:html|head|body)\b/i);
+    expect(ui).not.toContain('<textarea');
     expect(ui).toContain('homebridge.getPluginConfig()');
-    expect(ui).toContain('Add to configuration');
+    expect(ui).toContain('Scan for Devices');
+    expect(ui).toContain('Add Device');
+    expect(ui).toContain('Devices');
     expect(ui).toContain('homebridge.savePluginConfig()');
   });
 
