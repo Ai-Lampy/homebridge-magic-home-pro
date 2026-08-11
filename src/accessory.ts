@@ -55,7 +55,6 @@ export class MagicHomeAccessory {
     const serviceType = this.capability === 'switch' ? Service.Switch : Service.Lightbulb;
     this.service = accessory.getService(serviceType) ?? accessory.addService(serviceType);
     this.service.setCharacteristic(Characteristic.Name, accessoryName);
-    this.service.setCharacteristic(Characteristic.ConfiguredName, accessoryName);
     this.service.getCharacteristic(Characteristic.On)
       .onGet(async () => (await this.refresh()).on)
       .onSet(async value => this.execute(transport => transport.setPower(Boolean(value))));
@@ -116,7 +115,6 @@ export class MagicHomeAccessory {
       .setCharacteristic(Characteristic.Name, accessoryName)
       .setCharacteristic(Characteristic.Model, this.modelLabel(device));
     this.service.setCharacteristic(Characteristic.Name, accessoryName);
-    this.service.setCharacteristic(Characteristic.ConfiguredName, accessoryName);
     if (state) {
       this.state = state;
       const capabilityChanged = this.capability !== state.capability;

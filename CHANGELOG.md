@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.4
+
+- Avoid adding the unsupported Configured Name characteristic to Lightbulb services, preventing the corresponding Homebridge warning.
+
 ## 0.4.3
 
 - Keep the detected controller type visible for devices already saved in the plugin configuration.
