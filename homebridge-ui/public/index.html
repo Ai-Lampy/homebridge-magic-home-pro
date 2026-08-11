@@ -1,140 +1,298 @@
 <style>
-  #config { box-sizing: border-box; width: 100%; min-height: 320px; font: 12px ui-monospace, monospace; }
-  #result { overflow: auto; padding: 12px; background: rgba(127,127,127,.12); white-space: pre-wrap; }
-  #devices { display: grid; gap: 12px; margin-top: 12px; }
-  .device-card { border: 1px solid rgba(127,127,127,.35); border-radius: 6px; padding: 12px; }
-  .device-card p { margin: 4px 0 10px; }
+  .plugin-tabs { display: flex; gap: 8px; border-bottom: 1px solid rgba(127,127,127,.35); margin-bottom: 18px; }
+  .plugin-tabs button { border: 0; border-bottom: 3px solid transparent; background: transparent; padding: 10px 14px; }
+  .plugin-tabs button.active { border-bottom-color: var(--primary, #491f59); font-weight: 600; }
+  .device-list { display: grid; gap: 16px; margin-top: 16px; }
+  .device-card { border: 1px solid rgba(127,127,127,.35); border-radius: 8px; padding: 16px; }
+  .device-details { color: #6c757d; margin: 6px 0 14px; overflow-wrap: anywhere; }
+  .device-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .device-form .full-width { grid-column: 1 / -1; }
+  .field-help { display: block; color: #6c757d; font-size: 12px; margin-top: 4px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 640px) { .device-form { grid-template-columns: 1fr; } .device-form .full-width { grid-column: auto; } }
 </style>
 
 <div class="container-fluid px-0">
-  <p>This plugin is LAN-only. Scan the network, then explicitly add any discovered controllers you want the plugin to manage.</p>
-  <textarea id="config" class="form-control" aria-label="Platform configuration"></textarea>
-  <div>
-    <button id="save" class="btn btn-primary my-3 me-2">Save configuration</button>
-    <button id="scan" class="btn btn-secondary my-3">Run diagnostic scan</button>
-  </div>
-  <pre id="result">Ready.</pre>
-  <div id="devices" aria-live="polite"></div>
+  <nav class="plugin-tabs" aria-label="Plugin settings">
+    <button id="tab-scan" class="active" type="button">Scan for Devices</button>
+    <button id="tab-devices" type="button">Devices</button>
+  </nav>
+
+  <section id="panel-scan">
+    <p>Find compatible MagicHome controllers on the local network. Scanning does not add anything until you confirm a device.</p>
+    <button id="scan" class="btn btn-primary" type="button">Scan for Devices</button>
+    <p id="scan-status" class="mt-3" aria-live="polite">Ready to scan.</p>
+    <div id="scan-results" class="device-list" aria-live="polite"></div>
+  </section>
+
+  <section id="panel-devices" hidden>
+    <p>View or edit devices already saved in this plugin configuration.</p>
+    <div class="alert alert-info">
+      The Location field is stored as a room label. Apple Home controls its own room membership, so select the final room in the Apple Home app.
+    </div>
+    <div id="configured-devices" class="device-list" aria-live="polite"></div>
+  </section>
 </div>
 
 <script>
-    const editor = document.querySelector('#config');
-    const result = document.querySelector('#result');
-    const devices = document.querySelector('#devices');
+  const colorProfiles = [
+    ['auto', 'Automatic (detected)'],
+    ['rgb', 'RGB'],
+    ['rgbw', 'RGBW'],
+    ['rgbww', 'RGBWW'],
+    ['rgbcct', 'RGBCCT'],
+    ['rgbwcct', 'RGBWCCT'],
+    ['rgbwwcw', 'RGBWWCW'],
+  ];
+  let pluginConfig = { platform: 'MagicHomePro', name: 'Magic Home Pro', devices: [] };
+  let latestReport = [];
 
-    function parseConfig() {
-      const value = JSON.parse(editor.value);
-      value.platform = 'MagicHomePro';
-      return value;
+  const scanPanel = document.querySelector('#panel-scan');
+  const devicesPanel = document.querySelector('#panel-devices');
+  const scanTab = document.querySelector('#tab-scan');
+  const devicesTab = document.querySelector('#tab-devices');
+  const scanStatus = document.querySelector('#scan-status');
+  const scanResults = document.querySelector('#scan-results');
+  const configuredDevices = document.querySelector('#configured-devices');
+
+  function normalizeMac(value) {
+    return typeof value === 'string' ? value.replace(/[^a-f0-9]/gi, '').toUpperCase() : '';
+  }
+
+  function normalizeColorOrder(value) {
+    const order = String(value || '').toUpperCase().replace(/[^RGBWC]/g, '');
+    return order.length >= 1 && order.length <= 5 && new Set(order).size === order.length ? order : '';
+  }
+
+  function configuredDeviceIndex(device) {
+    const foundMac = normalizeMac(device.mac);
+    const byMac = foundMac ? pluginConfig.devices.findIndex(item => normalizeMac(item.mac) === foundMac) : -1;
+    return byMac >= 0 ? byMac : pluginConfig.devices.findIndex(item => item.host === device.host);
+  }
+
+  function switchTab(tab) {
+    const showScan = tab === 'scan';
+    scanPanel.hidden = !showScan;
+    devicesPanel.hidden = showScan;
+    scanTab.classList.toggle('active', showScan);
+    devicesTab.classList.toggle('active', !showScan);
+    if (!showScan) renderConfiguredDevices();
+  }
+
+  function field(labelText, input, helpText, fullWidth = false) {
+    const wrapper = document.createElement('div');
+    if (fullWidth) wrapper.className = 'full-width';
+    const label = document.createElement('label');
+    label.className = 'form-label';
+    label.textContent = labelText;
+    label.append(input);
+    wrapper.append(label);
+    if (helpText) {
+      const help = document.createElement('small');
+      help.className = 'field-help';
+      help.textContent = helpText;
+      wrapper.append(help);
     }
+    return wrapper;
+  }
 
-    function normalizedMac(value) {
-      return typeof value === 'string' ? value.replace(/[^a-f0-9]/gi, '').toUpperCase() : '';
+  function input(value = '', type = 'text') {
+    const element = document.createElement('input');
+    element.className = type === 'checkbox' ? 'form-check-input ms-2' : 'form-control mt-1';
+    element.type = type;
+    if (type === 'checkbox') element.checked = Boolean(value);
+    else element.value = value;
+    return element;
+  }
+
+  function select(options, value) {
+    const element = document.createElement('select');
+    element.className = 'form-select mt-1';
+    for (const [optionValue, text] of options) {
+      const option = document.createElement('option');
+      option.value = optionValue;
+      option.textContent = text;
+      option.selected = optionValue === value;
+      element.append(option);
     }
+    return element;
+  }
 
-    function configuredDeviceIndex(config, device) {
-      const foundMac = normalizedMac(device.mac);
-      const configured = Array.isArray(config.devices) ? config.devices : [];
-      const macIndex = foundMac
-        ? configured.findIndex(item => normalizedMac(item.mac) === foundMac)
-        : -1;
-      return macIndex >= 0 ? macIndex : configured.findIndex(item => item.host === device.host);
-    }
+  function defaultProfile(capability) {
+    return ['rgb', 'rgbw', 'rgbcct'].includes(capability) ? capability : 'auto';
+  }
 
-    function proposedName(device) {
-      if (device.model) return device.model;
-      const suffix = normalizedMac(device.mac).slice(-6) || device.host;
-      return `MagicHome ${suffix}`;
-    }
+  function defaultOrder(profile) {
+    if (profile === 'rgb') return 'RGB';
+    if (['rgbw', 'rgbww'].includes(profile)) return 'RGBW';
+    if (['rgbcct', 'rgbwcct', 'rgbwwcw'].includes(profile)) return 'RGBWC';
+    return 'RGBWC';
+  }
 
-    async function saveDevice(device) {
-      const config = parseConfig();
-      config.devices = Array.isArray(config.devices) ? config.devices : [];
-      const index = configuredDeviceIndex(config, device);
-      const details = {
-        host: device.host,
-        ...(device.mac ? { mac: normalizedMac(device.mac) } : {}),
-      };
-      if (index >= 0) {
-        config.devices[index] = { ...config.devices[index], ...details };
-      } else {
-        config.devices.push({ name: proposedName(device), ...details });
-      }
-      editor.value = JSON.stringify(config, null, 2);
-      await homebridge.updatePluginConfig([config]);
-      await homebridge.savePluginConfig();
-      homebridge.toast.success(
-        index >= 0 ? 'Device details updated' : 'Device added to the plugin configuration',
-        'Magic Home Pro',
-      );
-    }
+  function defaultName(device) {
+    return device.name || device.model || `MagicHome ${normalizeMac(device.mac).slice(-6) || device.host}`;
+  }
 
-    function renderDevices(report) {
-      devices.replaceChildren();
-      if (!Array.isArray(report) || report.length === 0) {
-        const empty = document.createElement('p');
-        empty.textContent = 'No MagicHome controllers were found.';
-        devices.append(empty);
-        return;
-      }
-      const config = parseConfig();
-      for (const device of report) {
-        const card = document.createElement('section');
-        card.className = 'device-card';
-        const title = document.createElement('strong');
-        title.textContent = device.model || device.mac || device.host;
-        const details = document.createElement('p');
-        const status = device.tcpReachable ? 'TCP control available' : `TCP unavailable: ${device.error || 'no response'}`;
-        details.textContent = `${device.host}${device.mac ? ` · ${device.mac}` : ''}${device.capability ? ` · ${device.capability}` : ''} · ${status}`;
-        const button = document.createElement('button');
-        const index = configuredDeviceIndex(config, device);
-        const existing = index >= 0 ? config.devices[index] : undefined;
-        const needsUpdate = existing && (
-          existing.host !== device.host || (!normalizedMac(existing.mac) && normalizedMac(device.mac))
-        );
-        button.className = 'btn btn-sm btn-primary';
-        button.textContent = index < 0 ? 'Add to configuration' : needsUpdate ? 'Update configuration' : 'Already configured';
-        button.disabled = index >= 0 && !needsUpdate;
-        button.addEventListener('click', async () => {
-          try {
-            homebridge.showSpinner();
-            await saveDevice(device);
-            renderDevices(report);
-          } catch (error) {
-            homebridge.toast.error(error.message, 'Could not add device');
-          } finally {
-            homebridge.hideSpinner();
-          }
-        });
-        card.append(title, details, button);
-        devices.append(card);
-      }
-    }
+  async function persistConfig(message) {
+    pluginConfig.platform = 'MagicHomePro';
+    pluginConfig.name = pluginConfig.name || 'Magic Home Pro';
+    await homebridge.updatePluginConfig([pluginConfig]);
+    await homebridge.savePluginConfig();
+    homebridge.toast.success(message, 'Magic Home Pro');
+  }
 
-    (async () => {
-      const allConfig = await homebridge.getPluginConfig();
-      const config = allConfig[0] || { platform: 'MagicHomePro', name: 'Magic Home Pro' };
-      editor.value = JSON.stringify(config, null, 2);
-    })().catch(error => { result.textContent = error.message; });
+  function deviceEditor(device, index, detected) {
+    const card = document.createElement('article');
+    card.className = 'device-card';
+    const heading = document.createElement('h5');
+    heading.textContent = index === undefined ? defaultName(device) : device.name || device.host;
+    const details = document.createElement('p');
+    details.className = 'device-details';
+    const detailParts = [
+      `IP: ${device.host}`,
+      device.mac ? `MAC: ${normalizeMac(device.mac)}` : undefined,
+      device.model ? `Model: ${device.model}` : undefined,
+      detected?.capability ? `Detected control: ${detected.capability.toUpperCase()}` : undefined,
+      detected ? (detected.tcpReachable ? 'TCP control available' : `TCP unavailable: ${detected.error || 'no response'}`) : undefined,
+    ].filter(Boolean);
+    details.textContent = detailParts.join(' · ');
 
-    document.querySelector('#save').addEventListener('click', async () => {
-      try {
-        const config = parseConfig();
-        await homebridge.updatePluginConfig([config]);
-        await homebridge.savePluginConfig();
-        homebridge.toast.success('Configuration saved', 'Magic Home Pro');
-      } catch (error) { homebridge.toast.error(error.message, 'Could not save'); }
+    const form = document.createElement('div');
+    form.className = 'device-form';
+    const name = input(device.name || defaultName(device));
+    name.required = true;
+    const location = input(device.location || '');
+    const host = input(device.host || '');
+    host.required = true;
+    const mac = input(normalizeMac(device.mac));
+    const inferredType = /bulb/i.test(device.model || '') ? 'lightbulb' : 'led-strip';
+    const deviceType = select([['led-strip', 'LED Strip'], ['lightbulb', 'Lightbulb']], device.deviceType || inferredType);
+    const profileValue = device.colorControl || defaultProfile(detected?.capability);
+    const colorControl = select(colorProfiles, profileValue);
+    const cctControl = input(Boolean(device.cctControl), 'checkbox');
+    const colorOrder = input(device.colorOrder || defaultOrder(profileValue));
+    colorOrder.maxLength = 5;
+    colorOrder.addEventListener('input', () => { colorOrder.value = colorOrder.value.toUpperCase().replace(/[^RGBWC]/g, ''); });
+
+    form.append(
+      field('Device Name', name),
+      field('Location / Room label', location, 'Choose the actual Apple Home room later in the Home app.'),
+      field('IP Address', host),
+      field('MAC Address', mac, 'Used for stable HomeKit identity.'),
+      field('Device Type', deviceType),
+      field('Colour Control', colorControl, 'Override automatic capability detection when required.'),
+      field('CCT Control', cctControl, 'Force colour-temperature controls even when the controller does not report CCT support.'),
+      field('Colour Order', colorOrder, 'Controller output order, for example GRB if red and green are swapped.'),
+    );
+
+    colorControl.addEventListener('change', () => {
+      if (!device.colorOrder || colorOrder.value === defaultOrder(profileValue)) colorOrder.value = defaultOrder(colorControl.value);
     });
 
-    document.querySelector('#scan').addEventListener('click', async () => {
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    const save = document.createElement('button');
+    save.className = 'btn btn-primary';
+    save.type = 'button';
+    save.textContent = index === undefined ? 'Add Device' : 'Save Changes';
+    save.addEventListener('click', async () => {
       try {
+        if (!name.value.trim() || !host.value.trim()) throw new Error('Device Name and IP Address are required.');
+        const order = normalizeColorOrder(colorOrder.value);
+        if (!order) throw new Error('Colour Order must contain 1–5 unique letters selected from R, G, B, W and C.');
+        const updated = {
+          name: name.value.trim(),
+          ...(location.value.trim() ? { location: location.value.trim() } : {}),
+          host: host.value.trim(),
+          ...(normalizeMac(mac.value) ? { mac: normalizeMac(mac.value) } : {}),
+          deviceType: deviceType.value,
+          cctControl: cctControl.checked,
+          colorControl: colorControl.value,
+          colorOrder: order,
+        };
         homebridge.showSpinner();
-        result.textContent = 'Scanning…';
-        devices.replaceChildren();
-        const report = await homebridge.request('/diagnostic-scan', { config: parseConfig() });
-        result.textContent = JSON.stringify(report, null, 2);
-        renderDevices(report);
-      } catch (error) { result.textContent = error.stack || error.message; }
-      finally { homebridge.hideSpinner(); }
+        const targetIndex = index === undefined ? configuredDeviceIndex(device) : index;
+        if (targetIndex >= 0) pluginConfig.devices[targetIndex] = { ...pluginConfig.devices[targetIndex], ...updated };
+        else pluginConfig.devices.push(updated);
+        await persistConfig(targetIndex >= 0 ? 'Device configuration updated' : 'Device added to configuration');
+        renderScanResults(latestReport);
+        renderConfiguredDevices();
+      } catch (error) {
+        homebridge.toast.error(error.message, 'Could not save device');
+      } finally {
+        homebridge.hideSpinner();
+      }
     });
+    actions.append(save);
+
+    card.append(heading, details, form, actions);
+    return card;
+  }
+
+  function renderScanResults(report) {
+    scanResults.replaceChildren();
+    if (!Array.isArray(report) || report.length === 0) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No compatible MagicHome controllers were found.';
+      scanResults.append(empty);
+      return;
+    }
+    for (const found of report) {
+      const existingIndex = configuredDeviceIndex(found);
+      if (existingIndex >= 0) {
+        const card = document.createElement('article');
+        card.className = 'device-card';
+        const heading = document.createElement('h5');
+        heading.textContent = pluginConfig.devices[existingIndex].name || found.model || found.host;
+        const details = document.createElement('p');
+        details.className = 'device-details';
+        details.textContent = `${found.host}${found.mac ? ` · ${normalizeMac(found.mac)}` : ''} · ${found.capability || 'unknown'} · Already configured`;
+        const edit = document.createElement('button');
+        edit.className = 'btn btn-secondary';
+        edit.type = 'button';
+        edit.textContent = 'Edit in Devices';
+        edit.addEventListener('click', () => switchTab('devices'));
+        card.append(heading, details, edit);
+        scanResults.append(card);
+      } else {
+        scanResults.append(deviceEditor({ ...found, name: defaultName(found) }, undefined, found));
+      }
+    }
+  }
+
+  function renderConfiguredDevices() {
+    configuredDevices.replaceChildren();
+    if (!pluginConfig.devices.length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No devices have been added. Use Scan for Devices to find one.';
+      configuredDevices.append(empty);
+      return;
+    }
+    pluginConfig.devices.forEach((device, index) => configuredDevices.append(deviceEditor(device, index)));
+  }
+
+  scanTab.addEventListener('click', () => switchTab('scan'));
+  devicesTab.addEventListener('click', () => switchTab('devices'));
+  document.querySelector('#scan').addEventListener('click', async () => {
+    try {
+      homebridge.showSpinner();
+      scanStatus.textContent = 'Scanning the local network…';
+      scanResults.replaceChildren();
+      latestReport = await homebridge.request('/diagnostic-scan', { config: pluginConfig });
+      scanStatus.textContent = `Scan complete: ${latestReport.length} controller${latestReport.length === 1 ? '' : 's'} found.`;
+      renderScanResults(latestReport);
+    } catch (error) {
+      scanStatus.textContent = `Scan failed: ${error.message}`;
+    } finally {
+      homebridge.hideSpinner();
+    }
+  });
+
+  (async () => {
+    const blocks = await homebridge.getPluginConfig();
+    pluginConfig = blocks[0] || pluginConfig;
+    pluginConfig.devices = Array.isArray(pluginConfig.devices) ? pluginConfig.devices : [];
+    renderConfiguredDevices();
+  })().catch(error => { scanStatus.textContent = `Could not load configuration: ${error.message}`; });
 </script>

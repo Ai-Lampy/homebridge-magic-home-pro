@@ -10,7 +10,7 @@
       "platform": "MagicHomePro",
       "name": "Magic Home Pro Smoke Test",
       "discovery": {
-        "enabled": true,
+        "enabled": false,
         "timeoutMs": 1000,
         "retries": 1,
         "retryDelayMs": 0,

@@ -14,15 +14,24 @@ async function simulatedController(handler: (packet: Buffer, socket: net.Socket)
 
 describe('MagicHome transport', () => {
   it.each([
-    [0x33, 'rgb'], [0x35, 'rgbcct'], [0x41, 'dimmer'], [0x44, 'rgbw'],
-    [0x52, 'cct'], [0x93, 'switch'], [0x10, 'unknown'],
-  ])('detects controller type 0x%s', (type, expected) => {
+    { type: 0x33, label: '0x33', expected: 'rgb' },
+    { type: 0x35, label: '0x35', expected: 'rgbcct' },
+    { type: 0x41, label: '0x41', expected: 'dimmer' },
+    { type: 0x44, label: '0x44', expected: 'rgbw' },
+    { type: 0x52, label: '0x52', expected: 'cct' },
+    { type: 0x93, label: '0x93', expected: 'switch' },
+    { type: 0x10, label: '0x10', expected: 'unknown' },
+  ])('detects controller type $label', ({ type, expected }) => {
     expect(capabilityFromResponse(Buffer.from([0x81, type]))).toBe(expected);
   });
 
   it.each([
-    [0x01, 'dimmer'], [0x02, 'cct'], [0x03, 'rgb'], [0x04, 'rgbw'], [0x05, 'rgbcct'],
-  ])('detects configurable controller mode 0x%s', (mode, expected) => {
+    { mode: 0x01, label: '0x01', expected: 'dimmer' },
+    { mode: 0x02, label: '0x02', expected: 'cct' },
+    { mode: 0x03, label: '0x03', expected: 'rgb' },
+    { mode: 0x04, label: '0x04', expected: 'rgbw' },
+    { mode: 0x05, label: '0x05', expected: 'rgbcct' },
+  ])('detects configurable controller mode $label', ({ mode, expected }) => {
     expect(capabilityFromResponse(Buffer.from([0x81, 0x25, 0x23, 0x61, mode]))).toBe(expected);
   });
 

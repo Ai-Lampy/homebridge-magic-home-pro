@@ -45,6 +45,12 @@ describe('Homebridge plugin metadata', () => {
     expect(ui).toContain('Scan for Devices');
     expect(ui).toContain('Add Device');
     expect(ui).toContain('Devices');
+    for (const field of ['Device Name', 'Location / Room label', 'Device Type', 'CCT Control', 'Colour Control', 'Colour Order']) {
+      expect(ui).toContain(field);
+    }
+    for (const profile of ['RGB', 'RGBW', 'RGBWW', 'RGBCCT', 'RGBWCCT', 'RGBWWCW']) {
+      expect(ui).toContain(profile);
+    }
     expect(ui).toContain('homebridge.savePluginConfig()');
   });
 
