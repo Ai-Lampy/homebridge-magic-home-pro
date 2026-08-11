@@ -8,7 +8,7 @@ describe('configuration and identity', () => {
       discovery: { retries: 99, subnetProbe: null },
       devices: [{ host: 'bad' }, {
         host: '192.168.1.2', location: 'Kitchen', deviceType: 'led-strip', cctControl: true,
-        colorControl: 'rgbwwcw', colorOrder: 'GRBWC',
+        colorControl: 'rgbwwcw', colorControlOverride: true, colorOrder: 'GRBWC', detectedCapability: 'dimmer',
       }],
       excludedDevices: [{ host: '192.168.1.3', mac: 'aa:bb:cc:dd:ee:ff' }, { host: 'bad' }],
     });
@@ -16,9 +16,19 @@ describe('configuration and identity', () => {
     expect(config.discovery.subnetProbe.enabled).toBe(false);
     expect(config.devices).toHaveLength(1);
     expect(config.devices[0]).toMatchObject({
-      location: 'Kitchen', deviceType: 'led-strip', cctControl: true, colorControl: 'rgbwwcw', colorOrder: 'GRBWC',
+      location: 'Kitchen', deviceType: 'led-strip', cctControl: true, colorControl: 'rgbwwcw',
+      colorControlOverride: true, colorOrder: 'GRBWC', detectedCapability: 'dimmer',
     });
     expect(config.excludedDevices).toEqual([{ host: '192.168.1.3', mac: 'AABBCCDDEEFF' }]);
+  });
+
+  it('does not treat colour profiles saved by the old UI as explicit overrides', () => {
+    const [device] = normalizeConfig({
+      devices: [{ host: '192.168.1.2', colorControl: 'rgbcct', colorOrder: '' }],
+    }).devices;
+    expect(device).toMatchObject({ host: '192.168.1.2', colorControlOverride: false });
+    expect(device).not.toHaveProperty('colorControl');
+    expect(device).not.toHaveProperty('colorOrder');
   });
 
   it('uses normalized MAC rather than changing IP for identity', () => {

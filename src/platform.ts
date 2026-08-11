@@ -107,7 +107,9 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
         ...(device.deviceType ? { deviceType: device.deviceType } : {}),
         ...(device.cctControl !== undefined ? { cctControl: device.cctControl } : {}),
         ...(device.colorControl ? { colorControl: device.colorControl } : {}),
+        ...(device.colorControlOverride !== undefined ? { colorControlOverride: device.colorControlOverride } : {}),
         ...(device.colorOrder ? { colorOrder: device.colorOrder } : {}),
+        ...(device.detectedCapability ? { detectedCapability: device.detectedCapability } : {}),
         source: 'configuration',
         sources: ['configuration'],
       };
@@ -163,7 +165,11 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
     const detectedCapability = state.capability;
     state = {
       ...state,
-      capability: effectiveCapability(detectedCapability, device.colorControl, device.cctControl),
+      capability: effectiveCapability(
+        detectedCapability,
+        device.colorControlOverride ? device.colorControl : 'auto',
+        device.cctControl,
+      ),
     };
     if (state.capability !== detectedCapability) {
       this.log.info(`Capability override for ${device.name ?? device.host}: ${detectedCapability} → ${state.capability}`);
@@ -182,13 +188,16 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
       schemaVersion: 1,
       stableId,
       host: device.host,
+      ...(device.name ? { name: device.name } : {}),
       ...(normalizedMac ? { mac: normalizedMac } : {}),
       ...(device.model ? { model: device.model } : {}),
       ...(device.location ? { location: device.location } : {}),
       ...(device.deviceType ? { deviceType: device.deviceType } : {}),
       ...(device.cctControl !== undefined ? { cctControl: device.cctControl } : {}),
       ...(device.colorControl ? { colorControl: device.colorControl } : {}),
+      ...(device.colorControlOverride !== undefined ? { colorControlOverride: device.colorControlOverride } : {}),
       ...(device.colorOrder ? { colorOrder: device.colorOrder } : {}),
+      detectedCapability,
       capability: state.capability,
       lastSeen: new Date().toISOString(),
     };
@@ -286,13 +295,16 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
   private deviceFromContext(context: CachedDeviceContext): DiscoveredDevice {
     return {
       host: context.host,
+      ...(context.name ? { name: context.name } : {}),
       ...(context.mac ? { mac: context.mac } : {}),
       ...(context.model ? { model: context.model } : {}),
       ...(context.location ? { location: context.location } : {}),
       ...(context.deviceType ? { deviceType: context.deviceType } : {}),
       ...(context.cctControl !== undefined ? { cctControl: context.cctControl } : {}),
       ...(context.colorControl ? { colorControl: context.colorControl } : {}),
+      ...(context.colorControlOverride !== undefined ? { colorControlOverride: context.colorControlOverride } : {}),
       ...(context.colorOrder ? { colorOrder: context.colorOrder } : {}),
+      ...(context.detectedCapability ? { detectedCapability: context.detectedCapability } : {}),
       source: 'cache',
       sources: ['cache'],
     };

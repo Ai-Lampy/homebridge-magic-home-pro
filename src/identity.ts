@@ -26,10 +26,14 @@ export function readCachedContext(value: unknown): CachedDeviceContext | undefin
   const deviceTypes: DeviceType[] = ['led-strip', 'lightbulb'];
   const colorProfiles: ColorControlProfile[] = ['auto', 'rgb', 'rgbw', 'rgbww', 'rgbcct', 'rgbwcct', 'rgbwwcw'];
   const colorOrder = normalizeColorOrder(item.colorOrder);
+  const detectedCapability = typeof item.detectedCapability === 'string'
+    && capabilities.includes(item.detectedCapability as CachedDeviceContext['capability'])
+    ? item.detectedCapability as NonNullable<CachedDeviceContext['capability']> : undefined;
   return {
     schemaVersion: 1,
     stableId: item.stableId,
     host: item.host,
+    ...(typeof item.name === 'string' && item.name.trim() ? { name: item.name.trim() } : {}),
     ...(mac ? { mac } : {}),
     ...(typeof item.model === 'string' ? { model: item.model } : {}),
     ...(typeof item.location === 'string' ? { location: item.location } : {}),
@@ -38,7 +42,9 @@ export function readCachedContext(value: unknown): CachedDeviceContext | undefin
     ...(typeof item.cctControl === 'boolean' ? { cctControl: item.cctControl } : {}),
     ...(typeof item.colorControl === 'string' && colorProfiles.includes(item.colorControl as ColorControlProfile)
       ? { colorControl: item.colorControl as ColorControlProfile } : {}),
+    ...(typeof item.colorControlOverride === 'boolean' ? { colorControlOverride: item.colorControlOverride } : {}),
     ...(colorOrder ? { colorOrder } : {}),
+    ...(detectedCapability ? { detectedCapability } : {}),
     ...(capability ? { capability } : {}),
     ...(typeof item.lastSeen === 'string' ? { lastSeen: item.lastSeen } : {}),
   };

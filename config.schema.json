@@ -70,10 +70,17 @@
               "enum": ["auto", "rgb", "rgbw", "rgbww", "rgbcct", "rgbwcct", "rgbwwcw"],
               "enumNames": ["Automatic (detected)", "RGB", "RGBW", "RGBWW", "RGBCCT", "RGBWCCT", "RGBWWCW"]
             },
+            "colorControlOverride": {
+              "title": "Colour-control override enabled", "type": "boolean", "default": false
+            },
             "colorOrder": {
-              "title": "Colour order", "type": "string", "default": "RGBWC",
-              "description": "Logical colour connected to each controller output, for example GRB when red and green are swapped.",
-              "pattern": "^[RGBWC]{1,5}$"
+              "title": "Colour order", "type": "string",
+              "description": "Optional physical-output remap. When omitted, use the controller order configured by its app.",
+              "enum": ["RGB", "RBG", "GRB", "GBR", "BRG", "BGR", "RGBW", "RBGW", "GRBW", "GBRW", "BRGW", "BGRW", "RGBWC", "RBGWC", "GRBWC", "GBRWC", "BRGWC", "BGRWC", "RGBCW", "RBGCW", "GRBCW", "GBRCW", "BRGCW", "BGRCW"]
+            },
+            "detectedCapability": {
+              "title": "Detected control", "type": "string",
+              "enum": ["rgb", "rgbw", "rgbcct", "cct", "dimmer", "switch", "unknown"]
             }
           }
         }

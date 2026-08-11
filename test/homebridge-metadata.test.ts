@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.4.2',
+      version: '0.4.3',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -35,6 +35,8 @@ describe('Homebridge plugin metadata', () => {
         additionalProperties: false,
       },
     });
+    expect(configSchema.schema.properties.devices.items.properties.colorOrder).not.toHaveProperty('default');
+    expect(configSchema.schema.properties.devices.items.properties.detectedCapability.enum).toContain('dimmer');
   });
 
   it('publishes a Homebridge UI fragment rather than a complete HTML document', () => {
@@ -48,6 +50,9 @@ describe('Homebridge plugin metadata', () => {
     expect(ui).toContain('Remove Device');
     expect(ui).toContain('Confirm Remove');
     expect(ui).not.toContain('window.confirm');
+    expect(ui).toContain('Off (use controller/app setting)');
+    expect(ui).toContain('Detected control:');
+    expect(ui).toContain('homebridge.getCachedAccessories()');
     expect(ui).toContain('background: #fff');
     for (const field of ['Device Name', 'Location / Room label', 'Device Type', 'CCT Control', 'Colour Control', 'Colour Order']) {
       expect(ui).toContain(field);

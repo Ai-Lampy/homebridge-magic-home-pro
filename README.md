@@ -60,9 +60,13 @@ Manual IPs and configured targets are attempted even if broadcast discovery fail
 The custom Homebridge UI has two tabs and does not expose raw JSON:
 
 - **Scan for Devices** discovers controllers and shows their IP address, MAC address, model, detected control type, and TCP availability. A device is added only after the user reviews and confirms its settings.
-- **Devices** lists saved controllers and allows their settings to be edited or removed. Device removal uses a second confirmation step to prevent accidental deletion.
+- **Devices** lists saved controllers, keeps their detected control type visible, and allows their settings to be edited or removed. Device removal uses a second confirmation step to prevent accidental deletion.
 
-Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, a colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and physical colour-output order. For example, use `GRB` if commands intended for red and green operate the opposite outputs. Colour-order letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).
+Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, an optional colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and optional physical colour-output remapping. Automatic colour control uses the detected controller type, so a detected dimmer is exposed in Apple Home with power and brightness controls rather than RGB controls unless the user deliberately overrides it.
+
+Colour-order remapping is off by default, allowing the controller to use the output order selected in its app. Enable a listed order only if colours do not match. For example, select `GRB` if commands intended for red and green operate the opposite outputs. The letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).
+
+The Device Name is applied to the Homebridge cached accessory and its HomeKit name characteristics. Apple Home may retain a name previously customised by the user in the Home app.
 
 The Location field is plugin metadata. HomeKit does not allow a bridge plugin to assign Apple Home rooms; select the actual room for the accessory in the Apple Home app after it is added.
 

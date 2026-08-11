@@ -11,7 +11,8 @@ class FakeCharacteristic {
 
 class FakeService {
   readonly characteristics = new Map<unknown, FakeCharacteristic>();
-  setCharacteristic(): this { return this; }
+  readonly values = new Map<unknown, unknown>();
+  setCharacteristic(type: unknown, value: unknown): this { this.values.set(type, value); return this; }
   getCharacteristic(type: unknown): FakeCharacteristic {
     const characteristic = this.characteristics.get(type) ?? new FakeCharacteristic();
     this.characteristics.set(type, characteristic);
@@ -46,6 +47,7 @@ describe('accessory capability changes', () => {
     const Service = { AccessoryInformation: 'information', Lightbulb: 'lightbulb', Switch: 'switch' };
     const Characteristic = {
       Manufacturer: 'manufacturer', Model: 'model', SerialNumber: 'serial', Name: 'name', On: 'on',
+      ConfiguredName: 'configured-name',
       Brightness: 'brightness', Hue: 'hue', Saturation: 'saturation', ColorTemperature: 'temperature',
     };
     const platform = {
@@ -85,5 +87,11 @@ describe('accessory capability changes', () => {
     expect(lightbulb.testCharacteristic(Characteristic.Hue)).toBe(false);
     expect(lightbulb.testCharacteristic(Characteristic.Saturation)).toBe(false);
     expect(lightbulb.testCharacteristic(Characteristic.ColorTemperature)).toBe(false);
+
+    handler.update({ ...device, name: 'Kitchen LEDs' }, state('dimmer'));
+    expect(accessory.displayName).toBe('Kitchen LEDs');
+    expect(information.values.get(Characteristic.Name)).toBe('Kitchen LEDs');
+    expect(lightbulb.values.get(Characteristic.Name)).toBe('Kitchen LEDs');
+    expect(lightbulb.values.get(Characteristic.ConfiguredName)).toBe('Kitchen LEDs');
   });
 });

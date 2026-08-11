@@ -29,7 +29,9 @@ export interface ManualDeviceConfig {
   deviceType?: DeviceType;
   cctControl?: boolean;
   colorControl?: ColorControlProfile;
+  colorControlOverride?: boolean;
   colorOrder?: string;
+  detectedCapability?: Capability;
 }
 
 export interface ExcludedDeviceConfig {
@@ -60,7 +62,9 @@ export interface DiscoveredDevice {
   deviceType?: DeviceType;
   cctControl?: boolean;
   colorControl?: ColorControlProfile;
+  colorControlOverride?: boolean;
   colorOrder?: string;
+  detectedCapability?: Capability;
   source: string;
   sources: string[];
 }
@@ -83,13 +87,16 @@ export interface CachedDeviceContext {
   schemaVersion: 1;
   stableId: string;
   host: string;
+  name?: string;
   mac?: string;
   model?: string;
   location?: string;
   deviceType?: DeviceType;
   cctControl?: boolean;
   colorControl?: ColorControlProfile;
+  colorControlOverride?: boolean;
   colorOrder?: string;
+  detectedCapability?: Capability;
   capability?: Capability;
   lastSeen?: string;
 }

@@ -37,7 +37,7 @@
 
 <script>
   const colorProfiles = [
-    ['auto', 'Automatic (detected)'],
+    ['auto', 'Automatic (use detected control)'],
     ['rgb', 'RGB'],
     ['rgbw', 'RGBW'],
     ['rgbww', 'RGBWW'],
@@ -45,8 +45,16 @@
     ['rgbwcct', 'RGBWCCT'],
     ['rgbwwcw', 'RGBWWCW'],
   ];
+  const colorOrders = [
+    ['', 'Off (use controller/app setting)'],
+    ['RGB', 'RGB'], ['RBG', 'RBG'], ['GRB', 'GRB'], ['GBR', 'GBR'], ['BRG', 'BRG'], ['BGR', 'BGR'],
+    ['RGBW', 'RGBW'], ['RBGW', 'RBGW'], ['GRBW', 'GRBW'], ['GBRW', 'GBRW'], ['BRGW', 'BRGW'], ['BGRW', 'BGRW'],
+    ['RGBWC', 'RGBWC'], ['RBGWC', 'RBGWC'], ['GRBWC', 'GRBWC'], ['GBRWC', 'GBRWC'], ['BRGWC', 'BRGWC'], ['BGRWC', 'BGRWC'],
+    ['RGBCW', 'RGBCW'], ['RBGCW', 'RBGCW'], ['GRBCW', 'GRBCW'], ['GBRCW', 'GBRCW'], ['BRGCW', 'BRGCW'], ['BGRCW', 'BGRCW'],
+  ];
   let pluginConfig = { platform: 'MagicHomePro', name: 'Magic Home Pro', devices: [], excludedDevices: [] };
   let latestReport = [];
+  let cachedAccessories = [];
 
   const scanPanel = document.querySelector('#panel-scan');
   const devicesPanel = document.querySelector('#panel-devices');
@@ -76,6 +84,11 @@
     const secondMac = normalizeMac(second.mac);
     if (firstMac && secondMac) return firstMac === secondMac;
     return Boolean(first.host && first.host === second.host);
+  }
+
+  function cachedDetectedCapability(device) {
+    const cached = cachedAccessories.find(item => sameDevice(item.context || item, device));
+    return cached?.context?.detectedCapability || cached?.context?.capability;
   }
 
   function switchTab(tab) {
@@ -126,17 +139,6 @@
     return element;
   }
 
-  function defaultProfile(capability) {
-    return ['rgb', 'rgbw', 'rgbcct'].includes(capability) ? capability : 'auto';
-  }
-
-  function defaultOrder(profile) {
-    if (profile === 'rgb') return 'RGB';
-    if (['rgbw', 'rgbww'].includes(profile)) return 'RGBW';
-    if (['rgbcct', 'rgbwcct', 'rgbwwcw'].includes(profile)) return 'RGBWC';
-    return 'RGBWC';
-  }
-
   function defaultName(device) {
     return device.name || device.model || `MagicHome ${normalizeMac(device.mac).slice(-6) || device.host}`;
   }
@@ -156,12 +158,17 @@
     heading.textContent = index === undefined ? defaultName(device) : device.name || device.host;
     const details = document.createElement('p');
     details.className = 'device-details';
+    const recentDetection = latestReport.find(item => sameDevice(item, device));
+    const detectedCapability = detected?.capability || recentDetection?.capability
+      || device.detectedCapability || cachedDetectedCapability(device);
     const detailParts = [
       `IP: ${device.host}`,
       device.mac ? `MAC: ${normalizeMac(device.mac)}` : undefined,
       device.model ? `Model: ${device.model}` : undefined,
-      detected?.capability ? `Detected control: ${detected.capability.toUpperCase()}` : undefined,
-      detected ? (detected.tcpReachable ? 'TCP control available' : `TCP unavailable: ${detected.error || 'no response'}`) : undefined,
+      detectedCapability ? `Detected control: ${detectedCapability.toUpperCase()}` : 'Detected control: not yet available',
+      typeof detected?.tcpReachable === 'boolean'
+        ? (detected.tcpReachable ? 'TCP control available' : `TCP unavailable: ${detected.error || 'no response'}`)
+        : undefined,
     ].filter(Boolean);
     details.textContent = detailParts.join(' · ');
 
@@ -175,12 +182,10 @@
     const mac = input(normalizeMac(device.mac));
     const inferredType = /bulb/i.test(device.model || '') ? 'lightbulb' : 'led-strip';
     const deviceType = select([['led-strip', 'LED Strip'], ['lightbulb', 'Lightbulb']], device.deviceType || inferredType);
-    const profileValue = device.colorControl || defaultProfile(detected?.capability);
+    const profileValue = device.colorControlOverride === true ? device.colorControl || 'auto' : 'auto';
     const colorControl = select(colorProfiles, profileValue);
     const cctControl = input(Boolean(device.cctControl), 'checkbox');
-    const colorOrder = input(device.colorOrder || defaultOrder(profileValue));
-    colorOrder.maxLength = 5;
-    colorOrder.addEventListener('input', () => { colorOrder.value = colorOrder.value.toUpperCase().replace(/[^RGBWC]/g, ''); });
+    const colorOrder = select(colorOrders, normalizeColorOrder(device.colorOrder));
 
     form.append(
       field('Device Name', name),
@@ -190,12 +195,8 @@
       field('Device Type', deviceType),
       field('Colour Control', colorControl, 'Override automatic capability detection when required.'),
       field('CCT Control', cctControl, 'Force colour-temperature controls even when the controller does not report CCT support.'),
-      field('Colour Order', colorOrder, 'Controller output order, for example GRB if red and green are swapped.'),
+      field('Colour Order', colorOrder, 'Leave off to use the controller order configured by its app. Select a remap only when colours do not match.'),
     );
-
-    colorControl.addEventListener('change', () => {
-      if (!device.colorOrder || colorOrder.value === defaultOrder(profileValue)) colorOrder.value = defaultOrder(colorControl.value);
-    });
 
     const actions = document.createElement('div');
     actions.className = 'actions';
@@ -207,7 +208,6 @@
       try {
         if (!name.value.trim() || !host.value.trim()) throw new Error('Device Name and IP Address are required.');
         const order = normalizeColorOrder(colorOrder.value);
-        if (!order) throw new Error('Colour Order must contain 1–5 unique letters selected from R, G, B, W and C.');
         const updated = {
           name: name.value.trim(),
           ...(location.value.trim() ? { location: location.value.trim() } : {}),
@@ -216,14 +216,19 @@
           deviceType: deviceType.value,
           cctControl: cctControl.checked,
           colorControl: colorControl.value,
-          colorOrder: order,
+          colorControlOverride: colorControl.value !== 'auto',
+          ...(order ? { colorOrder: order } : {}),
+          ...(detectedCapability ? { detectedCapability } : {}),
         };
         homebridge.showSpinner();
         pluginConfig.excludedDevices = pluginConfig.excludedDevices.filter(excluded => !sameDevice(excluded, updated));
         const targetIndex = index === undefined ? configuredDeviceIndex(device) : index;
         if (targetIndex >= 0) pluginConfig.devices[targetIndex] = { ...pluginConfig.devices[targetIndex], ...updated };
         else pluginConfig.devices.push(updated);
-        await persistConfig(targetIndex >= 0 ? 'Device configuration updated' : 'Device added to configuration');
+        if (targetIndex >= 0 && !order) delete pluginConfig.devices[targetIndex].colorOrder;
+        await persistConfig(targetIndex >= 0
+          ? 'Device configuration updated. Restart Homebridge to apply the changes.'
+          : 'Device added to configuration. Restart Homebridge to add the accessory.');
         renderScanResults(latestReport);
         renderConfiguredDevices();
       } catch (error) {
@@ -349,7 +354,11 @@
   });
 
   (async () => {
-    const blocks = await homebridge.getPluginConfig();
+    const [blocks, cached] = await Promise.all([
+      homebridge.getPluginConfig(),
+      homebridge.getCachedAccessories().catch(() => []),
+    ]);
+    cachedAccessories = Array.isArray(cached) ? cached : [];
     pluginConfig = blocks[0] || pluginConfig;
     pluginConfig.devices = Array.isArray(pluginConfig.devices) ? pluginConfig.devices : [];
     pluginConfig.excludedDevices = Array.isArray(pluginConfig.excludedDevices) ? pluginConfig.excludedDevices : [];

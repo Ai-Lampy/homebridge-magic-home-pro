@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.3
+
+- Keep the detected controller type visible for devices already saved in the plugin configuration.
+- Make colour-order remapping an optional selection that defaults to the controller/app setting.
+- Prevent automatically detected colour profiles from becoming forced overrides, including migration of values saved by earlier UI versions.
+- Apply user-defined device names to the cached accessory and HomeKit name characteristics.
+
 ## 0.4.2
 
 - Fix the Devices tab removal action by replacing the iframe-dependent browser prompt with visible Confirm Remove and Cancel buttons.

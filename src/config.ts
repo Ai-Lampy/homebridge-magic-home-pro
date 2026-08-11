@@ -40,7 +40,11 @@ export function normalizeConfig(input: unknown): MagicHomeConfig {
     if (typeof item.host !== 'string' || !isIPv4(item.host.trim())) return [];
     const deviceTypes: DeviceType[] = ['led-strip', 'lightbulb'];
     const colorProfiles: ColorControlProfile[] = ['auto', 'rgb', 'rgbw', 'rgbww', 'rgbcct', 'rgbwcct', 'rgbwwcw'];
+    const capabilities: MagicHomeConfig['devices'][number]['detectedCapability'][] = [
+      'rgb', 'rgbw', 'rgbcct', 'cct', 'dimmer', 'switch', 'unknown',
+    ];
     const colorOrder = normalizeColorOrder(item.colorOrder);
+    const colorControlOverride = item.colorControlOverride === true;
     return [{
       host: item.host.trim(),
       ...(typeof item.name === 'string' && item.name.trim() ? { name: item.name.trim() } : {}),
@@ -49,9 +53,15 @@ export function normalizeConfig(input: unknown): MagicHomeConfig {
       ...(typeof item.deviceType === 'string' && deviceTypes.includes(item.deviceType as DeviceType)
         ? { deviceType: item.deviceType as DeviceType } : {}),
       ...(typeof item.cctControl === 'boolean' ? { cctControl: item.cctControl } : {}),
-      ...(typeof item.colorControl === 'string' && colorProfiles.includes(item.colorControl as ColorControlProfile)
+      ...(colorControlOverride && typeof item.colorControl === 'string'
+        && colorProfiles.includes(item.colorControl as ColorControlProfile)
         ? { colorControl: item.colorControl as ColorControlProfile } : {}),
+      colorControlOverride,
       ...(colorOrder ? { colorOrder } : {}),
+      ...(typeof item.detectedCapability === 'string'
+        && capabilities.includes(item.detectedCapability as MagicHomeConfig['devices'][number]['detectedCapability'])
+        ? { detectedCapability: item.detectedCapability as NonNullable<MagicHomeConfig['devices'][number]['detectedCapability']> }
+        : {}),
     }];
   }) : [];
   const excludedDevices: ExcludedDeviceConfig[] = Array.isArray(root.excludedDevices)
