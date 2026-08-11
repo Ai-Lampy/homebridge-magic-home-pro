@@ -10,7 +10,7 @@ describe('Homebridge plugin metadata', () => {
       displayName: 'Magic Home Pro',
       version: '0.3.0',
       main: 'dist/index.js',
-      engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0' },
+      engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
     expect(pkg.keywords).toEqual(expect.arrayContaining(['homebridge-plugin', 'supports-hap']));
     expect(pkg.keywords).not.toContain('supports-matter');
@@ -54,5 +54,14 @@ describe('Homebridge plugin metadata', () => {
     const workflow = fs.readFileSync('.github/workflows/publish-npm.yml', 'utf8');
     expect(workflow).toContain('gh release create');
     expect(workflow).toContain('--notes-file release-notes.md');
+  });
+
+  it('tests every supported Node.js version on each GitHub update', () => {
+    const workflow = fs.readFileSync('.github/workflows/test-node.yml', 'utf8');
+    expect(workflow).toMatch(/\bpush:/);
+    expect(workflow).toMatch(/\bpull_request:/);
+    for (const version of ['22', '24', '26']) expect(workflow).toContain(`- ${version}`);
+    const publishWorkflow = fs.readFileSync('.github/workflows/publish-npm.yml', 'utf8');
+    expect(publishWorkflow).toContain('needs: test-node-support');
   });
 });
