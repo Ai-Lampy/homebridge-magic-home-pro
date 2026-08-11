@@ -10,6 +10,7 @@ describe('configuration and identity', () => {
         host: '192.168.1.2', location: 'Kitchen', deviceType: 'led-strip', cctControl: true,
         colorControl: 'rgbwwcw', colorOrder: 'GRBWC',
       }],
+      excludedDevices: [{ host: '192.168.1.3', mac: 'aa:bb:cc:dd:ee:ff' }, { host: 'bad' }],
     });
     expect(config.discovery.retries).toBe(10);
     expect(config.discovery.subnetProbe.enabled).toBe(false);
@@ -17,6 +18,7 @@ describe('configuration and identity', () => {
     expect(config.devices[0]).toMatchObject({
       location: 'Kitchen', deviceType: 'led-strip', cctControl: true, colorControl: 'rgbwwcw', colorOrder: 'GRBWC',
     });
+    expect(config.excludedDevices).toEqual([{ host: '192.168.1.3', mac: 'AABBCCDDEEFF' }]);
   });
 
   it('uses normalized MAC rather than changing IP for identity', () => {

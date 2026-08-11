@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1
+
+- Give the Scan for Devices and Devices tabs white backgrounds for clearer navigation.
+- Add a Remove Device action that removes the configuration and unregisters its cached Homebridge accessory on restart.
+
 ## 0.4.0
 
 - Replace the raw JSON configuration editor with Scan for Devices and Devices tabs, editable device details, capability/CCT overrides, and physical colour-order remapping.

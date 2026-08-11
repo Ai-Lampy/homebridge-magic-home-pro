@@ -1,7 +1,8 @@
 import { isIPv4, isValidCidr } from './network.js';
 import { normalizeColorOrder } from './capability.js';
 import type {
-  ColorControlProfile, DeviceType, DiscoveryConfig, LogLevel, MagicHomeConfig, ManualDeviceConfig, SubnetProbeConfig,
+  ColorControlProfile, DeviceType, DiscoveryConfig, ExcludedDeviceConfig, LogLevel, MagicHomeConfig,
+  ManualDeviceConfig, SubnetProbeConfig,
 } from './types.js';
 
 const object = (value: unknown): Record<string, unknown> =>
@@ -53,6 +54,15 @@ export function normalizeConfig(input: unknown): MagicHomeConfig {
       ...(colorOrder ? { colorOrder } : {}),
     }];
   }) : [];
+  const excludedDevices: ExcludedDeviceConfig[] = Array.isArray(root.excludedDevices)
+    ? root.excludedDevices.flatMap(value => {
+      const item = object(value);
+      const host = typeof item.host === 'string' && isIPv4(item.host.trim()) ? item.host.trim() : undefined;
+      const mac = typeof item.mac === 'string'
+        ? item.mac.replace(/[^a-f0-9]/gi, '').toUpperCase()
+        : '';
+      return host || mac.length === 12 ? [{ ...(host ? { host } : {}), ...(mac.length === 12 ? { mac } : {}) }] : [];
+    }) : [];
   const levels: LogLevel[] = ['error', 'warn', 'info', 'debug', 'trace'];
   const requestedLevel = root.logLevel;
   return {
@@ -60,6 +70,7 @@ export function normalizeConfig(input: unknown): MagicHomeConfig {
     name: typeof root.name === 'string' && root.name.trim() ? root.name.trim() : 'Magic Home Pro',
     discovery,
     devices,
+    excludedDevices,
     logLevel: typeof requestedLevel === 'string' && levels.includes(requestedLevel as LogLevel)
       ? requestedLevel as LogLevel : 'info',
   };

@@ -77,6 +77,20 @@
             }
           }
         }
+      },
+      "excludedDevices": {
+        "title": "Removed devices",
+        "description": "Internal identities used to keep explicitly removed devices out of the Homebridge cache.",
+        "type": "array",
+        "default": [],
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "host": { "type": "string", "format": "ipv4" },
+            "mac": { "type": "string" }
+          }
+        }
       }
     }
   },

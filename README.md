@@ -85,7 +85,9 @@ Optional subnet probing is disabled by default. It scans only explicitly configu
 
 ## Diagnostics
 
-The custom configuration UI exposes a diagnostic scan that does not register or delete accessories by itself. Each result has an explicit **Add Device** action; this saves the chosen device settings to the manual `devices` list. Restart Homebridge or the plugin child bridge after saving so startup discovery can register a newly added controller.
+The custom configuration UI has **Scan for Devices** and **Devices** tabs. Each scan result has an explicit **Add Device** action; this saves the chosen device settings to the manual `devices` list. The Devices tab lets you edit or remove configured controllers. Removing a device also records it as excluded, so after Homebridge or the plugin child bridge restarts its cached accessory is unregistered and automatic discovery does not immediately add it again. Adding the controller again clears that exclusion.
+
+Restart Homebridge or the plugin child bridge after adding or removing a device so the accessory cache is updated.
 
 Logs distinguish interface/bind/send failures, silence after discovery, unreachable TCP endpoints, unsupported responses, unknown capabilities, and previously known offline devices. Set `logLevel` to `trace` for sanitized raw protocol hex (LAN addresses and controller packets only; no credentials or unrelated traffic).
 

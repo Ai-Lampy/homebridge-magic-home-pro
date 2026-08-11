@@ -1,6 +1,6 @@
 <style>
   .plugin-tabs { display: flex; gap: 8px; border-bottom: 1px solid rgba(127,127,127,.35); margin-bottom: 18px; }
-  .plugin-tabs button { border: 0; border-bottom: 3px solid transparent; background: transparent; padding: 10px 14px; }
+  .plugin-tabs button { border: 1px solid rgba(127,127,127,.35); border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; background: #fff; color: #212529; padding: 10px 14px; }
   .plugin-tabs button.active { border-bottom-color: var(--primary, #491f59); font-weight: 600; }
   .device-list { display: grid; gap: 16px; margin-top: 16px; }
   .device-card { border: 1px solid rgba(127,127,127,.35); border-radius: 8px; padding: 16px; }
@@ -45,7 +45,7 @@
     ['rgbwcct', 'RGBWCCT'],
     ['rgbwwcw', 'RGBWWCW'],
   ];
-  let pluginConfig = { platform: 'MagicHomePro', name: 'Magic Home Pro', devices: [] };
+  let pluginConfig = { platform: 'MagicHomePro', name: 'Magic Home Pro', devices: [], excludedDevices: [] };
   let latestReport = [];
 
   const scanPanel = document.querySelector('#panel-scan');
@@ -69,6 +69,13 @@
     const foundMac = normalizeMac(device.mac);
     const byMac = foundMac ? pluginConfig.devices.findIndex(item => normalizeMac(item.mac) === foundMac) : -1;
     return byMac >= 0 ? byMac : pluginConfig.devices.findIndex(item => item.host === device.host);
+  }
+
+  function sameDevice(first, second) {
+    const firstMac = normalizeMac(first.mac);
+    const secondMac = normalizeMac(second.mac);
+    if (firstMac && secondMac) return firstMac === secondMac;
+    return Boolean(first.host && first.host === second.host);
   }
 
   function switchTab(tab) {
@@ -212,6 +219,7 @@
           colorOrder: order,
         };
         homebridge.showSpinner();
+        pluginConfig.excludedDevices = pluginConfig.excludedDevices.filter(excluded => !sameDevice(excluded, updated));
         const targetIndex = index === undefined ? configuredDeviceIndex(device) : index;
         if (targetIndex >= 0) pluginConfig.devices[targetIndex] = { ...pluginConfig.devices[targetIndex], ...updated };
         else pluginConfig.devices.push(updated);
@@ -225,6 +233,35 @@
       }
     });
     actions.append(save);
+
+    if (index !== undefined) {
+      const remove = document.createElement('button');
+      remove.className = 'btn btn-danger';
+      remove.type = 'button';
+      remove.textContent = 'Remove Device';
+      remove.addEventListener('click', async () => {
+        const configured = pluginConfig.devices[index];
+        if (!configured || !window.confirm(`Remove ${configured.name || configured.host} from Magic Home Pro?`)) return;
+        try {
+          homebridge.showSpinner();
+          pluginConfig.devices.splice(index, 1);
+          const excluded = {
+            ...(configured.host ? { host: configured.host } : {}),
+            ...(normalizeMac(configured.mac) ? { mac: normalizeMac(configured.mac) } : {}),
+          };
+          pluginConfig.excludedDevices = pluginConfig.excludedDevices.filter(item => !sameDevice(item, excluded));
+          pluginConfig.excludedDevices.push(excluded);
+          await persistConfig('Device removed. Restart Homebridge to delete its cached accessory.');
+          renderScanResults(latestReport);
+          renderConfiguredDevices();
+        } catch (error) {
+          homebridge.toast.error(error.message, 'Could not remove device');
+        } finally {
+          homebridge.hideSpinner();
+        }
+      });
+      actions.append(remove);
+    }
 
     card.append(heading, details, form, actions);
     return card;
@@ -293,6 +330,7 @@
     const blocks = await homebridge.getPluginConfig();
     pluginConfig = blocks[0] || pluginConfig;
     pluginConfig.devices = Array.isArray(pluginConfig.devices) ? pluginConfig.devices : [];
+    pluginConfig.excludedDevices = Array.isArray(pluginConfig.excludedDevices) ? pluginConfig.excludedDevices : [];
     renderConfiguredDevices();
   })().catch(error => { scanStatus.textContent = `Could not load configuration: ${error.message}`; });
 </script>

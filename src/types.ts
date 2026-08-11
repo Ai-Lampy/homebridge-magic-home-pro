@@ -32,6 +32,11 @@ export interface ManualDeviceConfig {
   colorOrder?: string;
 }
 
+export interface ExcludedDeviceConfig {
+  host?: string;
+  mac?: string;
+}
+
 export type DeviceType = 'led-strip' | 'lightbulb';
 export type ColorControlProfile = 'auto' | 'rgb' | 'rgbw' | 'rgbww' | 'rgbcct' | 'rgbwcct' | 'rgbwwcw';
 
@@ -40,6 +45,7 @@ export interface MagicHomeConfig extends PlatformConfig {
   name: string;
   discovery: DiscoveryConfig;
   devices: ManualDeviceConfig[];
+  excludedDevices: ExcludedDeviceConfig[];
   logLevel: LogLevel;
 }
 

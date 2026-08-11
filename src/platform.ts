@@ -55,6 +55,7 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
   }
 
   private async start(): Promise<void> {
+    this.removeExcludedCachedAccessories();
     const pending = new Set(this.cached.keys());
     const result = await retryWithDelay(
       DEVICE_SCAN_ATTEMPTS,
@@ -118,7 +119,8 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
       this.config.discovery.timeoutMs,
       this.abortController.signal,
     );
-    const candidates = this.mergeCandidates([...known, ...manual, ...discovered, ...probed]);
+    const candidates = this.mergeCandidates([...known, ...manual, ...discovered, ...probed])
+      .filter(device => !this.isExcluded(device));
     if (candidates.length === 0) {
       this.log.warn('Discovery completed with zero candidates. Check UDP 48899, VLAN/broadcast routing, or configure a device IP. The controller may expose no LAN endpoint.');
       return new Set();
@@ -259,6 +261,26 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
     if (!accessory) return;
     this.handlers.get(accessory.UUID)?.disable(reason);
     this.log.error(`Disabled ${accessory.displayName}: ${reason}. The cached accessory is preserved.`);
+  }
+
+  private isExcluded(device: Pick<DiscoveredDevice, 'host' | 'mac'>): boolean {
+    const deviceMac = normalizeMac(device.mac);
+    return this.config.excludedDevices.some(excluded => {
+      const excludedMac = normalizeMac(excluded.mac);
+      if (deviceMac && excludedMac) return deviceMac === excludedMac;
+      return Boolean(excluded.host && excluded.host === device.host);
+    });
+  }
+
+  private removeExcludedCachedAccessories(): void {
+    for (const [stableId, accessory] of this.cached) {
+      const context = readCachedContext(accessory.context);
+      if (!context || !this.isExcluded(context)) continue;
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      this.cached.delete(stableId);
+      this.handlers.delete(accessory.UUID);
+      this.log.info(`Removed ${accessory.displayName} from the Homebridge accessory cache`);
+    }
   }
 
   private deviceFromContext(context: CachedDeviceContext): DiscoveredDevice {
