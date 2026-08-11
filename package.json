@@ -1,0 +1,39 @@
+{
+  "name": "homebridge-magic-home-pro",
+  "version": "0.1.0-beta.0",
+  "description": "Local-only Homebridge platform for MagicHome and LEDnet Wi-Fi controllers",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.16.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": "./dist/index.js",
+  "files": ["dist", "homebridge-ui", "config.schema.json", "README.md", "LICENSE"],
+  "engines": { "node": "^22 || ^24 || ^26", "homebridge": ">=2.0.0-beta.0" },
+  "keywords": ["homebridge-plugin", "magichome", "lednet", "local", "lan"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist coverage",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "tsc -p tsconfig.json && vitest run && eslint .",
+    "prepack": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@homebridge/plugin-ui-utils": "^2.0.0"
+  },
+  "peerDependencies": {
+    "homebridge": ">=2.0.0-beta.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "homebridge": "^2.3.0",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

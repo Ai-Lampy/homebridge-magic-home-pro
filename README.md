@@ -12,6 +12,19 @@ A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi 
 
 Provision the device onto Wi-Fi in its vendor app first. The plugin does not require an account or a particular cloud region afterward. “Region independent” means the plugin imposes no cloud-region dependency; some firmware may nevertheless disable or alter its LAN interface based on provisioning. Such cloud-only firmware cannot be controlled locally.
 
+## Apple Home and remote control
+
+Accessories discovered by this plugin are exposed to Apple Home through the normal HomeKit bridge. They can be controlled in the Home app both on the home network and remotely while the user is away.
+
+Remote access is provided by Apple Home, not by MagicHome or this plugin. The user needs:
+
+- the Homebridge host and this plugin's child bridge running at home;
+- the child bridge paired with the user's Apple Home;
+- a supported HomePod or Apple TV configured as the Apple Home hub; and
+- Home enabled in iCloud with the same Apple Account used by the home hub.
+
+No inbound port forwarding, VPN, MagicHome cloud login, or plugin-specific cloud relay is required. Commands sent from outside the home reach the Apple Home hub, which forwards them to Homebridge; Homebridge then controls the MagicHome device locally over TCP `5577`.
+
 ## Installation and configuration
 
 Install through Homebridge UI, then add the platform. Defaults work on a flat LAN:
