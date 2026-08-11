@@ -15,7 +15,6 @@
         "title": "Discovery", "type": "object",
         "properties": {
           "enabled": { "title": "Enable automatic discovery", "type": "boolean", "default": true },
-          "intervalSeconds": { "title": "Scan interval (seconds, 0 disables)", "type": "integer", "default": 300, "minimum": 0, "maximum": 86400 },
           "timeoutMs": { "title": "Reply window / TCP timeout (ms)", "type": "integer", "default": 3000, "minimum": 250, "maximum": 30000 },
           "retries": { "title": "UDP retries", "type": "integer", "default": 3, "minimum": 1, "maximum": 10 },
           "retryDelayMs": { "title": "Retry delay (ms)", "type": "integer", "default": 250, "minimum": 0, "maximum": 10000 },
