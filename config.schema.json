@@ -49,8 +49,32 @@
           "additionalProperties": false,
           "properties": {
             "name": { "title": "Name", "type": "string" },
+            "location": {
+              "title": "Location / room label",
+              "description": "Stored as a plugin label. Select the actual Apple Home room in the Home app.",
+              "type": "string"
+            },
             "host": { "title": "IPv4 address", "type": "string", "format": "ipv4" },
-            "mac": { "title": "MAC address (recommended for stable identity)", "type": "string" }
+            "mac": { "title": "MAC address (recommended for stable identity)", "type": "string" },
+            "deviceType": {
+              "title": "Device type", "type": "string", "default": "lightbulb",
+              "enum": ["led-strip", "lightbulb"],
+              "enumNames": ["LED Strip", "Lightbulb"]
+            },
+            "cctControl": {
+              "title": "Force CCT control", "type": "boolean", "default": false,
+              "description": "Expose colour-temperature control even when it is not reported by the controller."
+            },
+            "colorControl": {
+              "title": "Colour control", "type": "string", "default": "auto",
+              "enum": ["auto", "rgb", "rgbw", "rgbww", "rgbcct", "rgbwcct", "rgbwwcw"],
+              "enumNames": ["Automatic (detected)", "RGB", "RGBW", "RGBWW", "RGBCCT", "RGBWCCT", "RGBWWCW"]
+            },
+            "colorOrder": {
+              "title": "Colour order", "type": "string", "default": "RGBWC",
+              "description": "Logical colour connected to each controller output, for example GRB when red and green are swapped.",
+              "pattern": "^[RGBWC]{1,5}$"
+            }
           }
         }
       }

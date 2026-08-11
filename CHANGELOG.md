@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+- Replace the raw JSON configuration editor with Scan for Devices and Devices tabs, editable device details, capability/CCT overrides, and physical colour-order remapping.
+
 ## 0.3.1
 
 - Correct MagicHome model capability detection, including identifying `0x41` controllers as single-channel LED dimmers and removing inappropriate colour controls.

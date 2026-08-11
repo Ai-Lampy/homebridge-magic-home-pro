@@ -57,6 +57,17 @@ Install through Homebridge UI, then add the platform. Defaults work on a flat LA
 
 Manual IPs and configured targets are attempted even if broadcast discovery fails. A MAC address in a manual entry is recommended because HomeKit accessory UUIDs use normalized MAC addresses whenever available; the last IP is cached but is never the identity of a discovered device. Accessories are retained while offline and never automatically pruned.
 
+### Plugin configuration UI
+
+The custom Homebridge UI has two tabs and does not expose raw JSON:
+
+- **Scan for Devices** discovers controllers and shows their IP address, MAC address, model, detected control type, and TCP availability. A device is added only after the user reviews and confirms its settings.
+- **Devices** lists saved controllers and allows their settings to be edited.
+
+Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, a colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and physical colour-output order. For example, use `GRB` if commands intended for red and green operate the opposite outputs. Colour-order letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).
+
+The Location field is plugin metadata. HomeKit does not allow a bridge plugin to assign Apple Home rooms; select the actual room for the accessory in the Apple Home app after it is added.
+
 ### Discovery and offline recovery
 
 New-device discovery runs only when Homebridge or the plugin child bridge starts. The plugin does not perform perpetual background discovery.
@@ -74,7 +85,7 @@ Optional subnet probing is disabled by default. It scans only explicitly configu
 
 ## Diagnostics
 
-The custom configuration UI exposes a diagnostic scan that does not register or delete accessories by itself. Each result has an explicit **Add to configuration** action; this saves the controller's IP and MAC to the manual `devices` list. If a configured controller is found at a new address, **Update configuration** changes its address while preserving its friendly name. Restart Homebridge or the plugin child bridge after saving so startup discovery can register a newly added controller.
+The custom configuration UI exposes a diagnostic scan that does not register or delete accessories by itself. Each result has an explicit **Add Device** action; this saves the chosen device settings to the manual `devices` list. Restart Homebridge or the plugin child bridge after saving so startup discovery can register a newly added controller.
 
 Logs distinguish interface/bind/send failures, silence after discovery, unreachable TCP endpoints, unsupported responses, unknown capabilities, and previously known offline devices. Set `logLevel` to `trace` for sanitized raw protocol hex (LAN addresses and controller packets only; no credentials or unrelated traffic).
 
@@ -103,3 +114,5 @@ GitHub Actions runs the complete build, lint, and test suite on Node.js 22, 24, 
 ## Releases
 
 Every version must have a matching `## x.y.z` section in `CHANGELOG.md`. The npm publication workflow extracts that section, publishes the package, and creates a matching GitHub release tagged `vx.y.z`. Homebridge UI-X displays the GitHub release body under **Release Notes** and the packaged `CHANGELOG.md` under **Full Changelog** when users update the plugin.
+
+Version numbers follow semantic versioning during the `0.x` development series: substantial features or UI redesigns advance the minor version (`0.3.0` → `0.4.0`), while fixes and smaller changes advance the patch version (`0.4.0` → `0.4.1`).
