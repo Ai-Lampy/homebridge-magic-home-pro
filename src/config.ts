@@ -1,5 +1,8 @@
 import { isIPv4, isValidCidr } from './network.js';
-import type { DiscoveryConfig, LogLevel, MagicHomeConfig, ManualDeviceConfig, SubnetProbeConfig } from './types.js';
+import { normalizeColorOrder } from './capability.js';
+import type {
+  ColorControlProfile, DeviceType, DiscoveryConfig, LogLevel, MagicHomeConfig, ManualDeviceConfig, SubnetProbeConfig,
+} from './types.js';
 
 const object = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -34,10 +37,20 @@ export function normalizeConfig(input: unknown): MagicHomeConfig {
   const devices: ManualDeviceConfig[] = Array.isArray(root.devices) ? root.devices.flatMap(value => {
     const item = object(value);
     if (typeof item.host !== 'string' || !isIPv4(item.host.trim())) return [];
+    const deviceTypes: DeviceType[] = ['led-strip', 'lightbulb'];
+    const colorProfiles: ColorControlProfile[] = ['auto', 'rgb', 'rgbw', 'rgbww', 'rgbcct', 'rgbwcct', 'rgbwwcw'];
+    const colorOrder = normalizeColorOrder(item.colorOrder);
     return [{
       host: item.host.trim(),
       ...(typeof item.name === 'string' && item.name.trim() ? { name: item.name.trim() } : {}),
+      ...(typeof item.location === 'string' && item.location.trim() ? { location: item.location.trim() } : {}),
       ...(typeof item.mac === 'string' && item.mac.trim() ? { mac: item.mac.trim() } : {}),
+      ...(typeof item.deviceType === 'string' && deviceTypes.includes(item.deviceType as DeviceType)
+        ? { deviceType: item.deviceType as DeviceType } : {}),
+      ...(typeof item.cctControl === 'boolean' ? { cctControl: item.cctControl } : {}),
+      ...(typeof item.colorControl === 'string' && colorProfiles.includes(item.colorControl as ColorControlProfile)
+        ? { colorControl: item.colorControl as ColorControlProfile } : {}),
+      ...(colorOrder ? { colorOrder } : {}),
     }];
   }) : [];
   const levels: LogLevel[] = ['error', 'warn', 'info', 'debug', 'trace'];

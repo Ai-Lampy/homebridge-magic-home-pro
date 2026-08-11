@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { remapFromDeviceOrder, remapToDeviceOrder } from './capability.js';
 import { TCP_CONTROL_PORT } from './settings.js';
 import type { Capability, DeviceState } from './types.js';
 
@@ -9,6 +10,7 @@ export interface TransportOptions {
   port?: number;
   timeoutMs?: number;
   trace?: (message: string) => void;
+  colorOrder?: string;
 }
 
 export class TransportError extends Error {
@@ -27,39 +29,67 @@ function clampByte(value: number): number {
 }
 
 export function capabilityFromResponse(packet: Buffer): Capability {
-  const type = packet[1];
-  switch (type) {
-    case 0x25:
-    case 0x33:
-      return 'rgb';
-    case 0x35:
-    case 0x37:
-      return 'rgbw';
-    case 0x41:
-    case 0x44:
-    case 0x45:
-      return 'rgbcct';
-    case 0x43:
-      return 'cct';
-    case 0x42:
-      return 'dimmer';
-    case 0x10:
-      return 'switch';
-    default:
-      return 'unknown';
+  const model = packet[1];
+  const fixedCapabilities: Readonly<Record<number, Capability>> = {
+    0x01: 'rgb',
+    0x03: 'cct',
+    0x04: 'rgbw',
+    0x06: 'rgbw',
+    0x07: 'rgbcct',
+    0x08: 'rgb',
+    0x09: 'cct',
+    0x0e: 'rgbcct',
+    0x16: 'cct',
+    0x17: 'dimmer',
+    0x1c: 'cct',
+    0x1d: 'dimmer',
+    0x1e: 'rgbcct',
+    0x21: 'dimmer',
+    0x33: 'rgb',
+    0x35: 'rgbcct',
+    0x41: 'dimmer',
+    0x44: 'rgbw',
+    0x45: 'rgb',
+    0x52: 'cct',
+    0x54: 'rgbw',
+    0x62: 'cct',
+    0x81: 'rgbw',
+    0x93: 'switch',
+    0x94: 'switch',
+    0x95: 'switch',
+    0x96: 'switch',
+    0x97: 'switch',
+    0xe1: 'cct',
+  };
+  if (model !== undefined && fixedCapabilities[model]) return fixedCapabilities[model];
+
+  // Model 0x25 and some unknown controllers encode their configured output
+  // layout in the low nibble of the state mode byte.
+  const mode = (packet[4] ?? 0) & 0x0f;
+  switch (mode) {
+    case 0x01: return 'dimmer';
+    case 0x02: return 'cct';
+    case 0x03: return 'rgb';
+    case 0x04:
+    case 0x06: return 'rgbw';
+    case 0x05:
+    case 0x07: return 'rgbcct';
+    default: return 'unknown';
   }
 }
 
-export function parseState(packet: Buffer, query: 'current' | 'legacy'): DeviceState {
+export function parseState(packet: Buffer, query: 'current' | 'legacy', colorOrder?: string): DeviceState {
   if (packet.length < 10) throw new TransportError(`State response is only ${packet.length} bytes`, 'malformed');
   const offset = packet[0] === 0x81 ? 0 : packet[0] === 0xef ? 0 : -1;
   if (offset < 0) throw new TransportError(`Unknown response header 0x${packet[0]?.toString(16) ?? 'none'}`, 'unsupported');
   const capability = capabilityFromResponse(packet);
-  const red = packet[6] ?? 0;
-  const green = packet[7] ?? 0;
-  const blue = packet[8] ?? 0;
-  const warmWhite = packet[9] ?? 0;
-  const coolWhite = packet[10] ?? 0;
+  const [red, green, blue, warmWhite, coolWhite] = remapFromDeviceOrder([
+    packet[6] ?? 0,
+    packet[7] ?? 0,
+    packet[8] ?? 0,
+    packet[9] ?? 0,
+    packet[10] ?? 0,
+  ], colorOrder);
   const maximum = Math.max(red, green, blue, warmWhite, coolWhite);
   return {
     on: packet[2] === 0x23,
@@ -84,17 +114,25 @@ export function buildPowerCommand(on: boolean): Buffer {
 export function buildColorCommand(
   capability: Capability,
   color: { red: number; green: number; blue: number; warmWhite?: number; coolWhite?: number },
+  colorOrder?: string,
 ): Buffer {
   const red = clampByte(color.red);
   const green = clampByte(color.green);
   const blue = clampByte(color.blue);
   const warm = clampByte(color.warmWhite ?? 0);
   const cool = clampByte(color.coolWhite ?? 0);
+  const [deviceRed, deviceGreen, deviceBlue, deviceWarm, deviceCool] = remapToDeviceOrder(
+    [red, green, blue, warm, cool],
+    colorOrder,
+  );
   let body: number[];
-  if (capability === 'rgbcct' || capability === 'cct') {
-    body = [0x31, red, green, blue, warm, cool, 0xf0, 0x0f];
+  if (capability === 'dimmer') {
+    const brightness = Math.max(red, green, blue, warm, cool);
+    body = [0x31, brightness, 0x00, 0x00, 0x00, 0x00, 0x0f];
+  } else if (capability === 'rgbcct' || capability === 'cct') {
+    body = [0x31, deviceRed, deviceGreen, deviceBlue, deviceWarm, deviceCool, 0xf0, 0x0f];
   } else {
-    body = [0x31, red, green, blue, capability === 'rgbw' || capability === 'dimmer' ? warm : 0, 0x00, 0xf0, 0x0f];
+    body = [0x31, deviceRed, deviceGreen, deviceBlue, capability === 'rgbw' ? deviceWarm : 0, 0x00, 0x0f];
   }
   return Buffer.from([...body, checksum(body)]);
 }
@@ -103,11 +141,13 @@ export class MagicHomeTransport {
   private readonly port: number;
   private readonly timeoutMs: number;
   private readonly trace: ((message: string) => void) | undefined;
+  private readonly colorOrder: string | undefined;
 
   constructor(private readonly host: string, options: TransportOptions = {}) {
     this.port = options.port ?? TCP_CONTROL_PORT;
     this.timeoutMs = options.timeoutMs ?? 3000;
     this.trace = options.trace;
+    this.colorOrder = options.colorOrder;
   }
 
   private exchange(packet: Buffer, expectReply: boolean): Promise<Buffer> {
@@ -149,7 +189,7 @@ export class MagicHomeTransport {
     const failures: string[] = [];
     for (const [name, query] of [['current', CURRENT_QUERY], ['legacy', LEGACY_QUERY]] as const) {
       try {
-        return parseState(await this.exchange(query, true), name);
+        return parseState(await this.exchange(query, true), name, this.colorOrder);
       } catch (error) {
         failures.push(`${name}: ${(error as Error).message}`);
       }
@@ -162,6 +202,6 @@ export class MagicHomeTransport {
   }
 
   async setColor(capability: Capability, color: Parameters<typeof buildColorCommand>[1]): Promise<void> {
-    await this.exchange(buildColorCommand(capability, color), false);
+    await this.exchange(buildColorCommand(capability, color, this.colorOrder), false);
   }
 }

@@ -48,7 +48,7 @@ export class MagicHomeAccessory {
     const { Service, Characteristic } = platform;
     accessory.getService(Service.AccessoryInformation)!
       .setCharacteristic(Characteristic.Manufacturer, 'MagicHome / LEDnet')
-      .setCharacteristic(Characteristic.Model, device.model ?? 'LAN controller')
+      .setCharacteristic(Characteristic.Model, this.modelLabel(device))
       .setCharacteristic(Characteristic.SerialNumber, device.mac ?? accessory.context.stableId);
     const serviceType = this.capability === 'switch' ? Service.Switch : Service.Lightbulb;
     this.service = accessory.getService(serviceType) ?? accessory.addService(serviceType);
@@ -56,20 +56,33 @@ export class MagicHomeAccessory {
     this.service.getCharacteristic(Characteristic.On)
       .onGet(async () => (await this.refresh()).on)
       .onSet(async value => this.execute(transport => transport.setPower(Boolean(value))));
-    if (this.capability !== 'switch') {
+    this.syncOptionalCharacteristics();
+  }
+
+  private syncOptionalCharacteristics(): void {
+    const { Characteristic } = this.platform;
+    const supportsBrightness = this.capability !== 'switch';
+    const supportsColor = ['rgb', 'rgbw', 'rgbcct', 'unknown'].includes(this.capability);
+    const supportsTemperature = ['rgbcct', 'cct'].includes(this.capability);
+    if (supportsBrightness) {
       this.service.getCharacteristic(Characteristic.Brightness)
         .onGet(async () => (await this.refresh()).brightness)
         .onSet(async value => { this.brightness = Number(value); await this.sendColor(); });
+    } else {
+      this.removeCharacteristic(Characteristic.Brightness);
     }
-    if (['rgb', 'rgbw', 'rgbcct', 'unknown'].includes(this.capability)) {
+    if (supportsColor) {
       this.service.getCharacteristic(Characteristic.Hue)
         .onGet(async () => { await this.refresh(); return this.hue; })
         .onSet(async value => { this.hue = Number(value); await this.sendColor(); });
       this.service.getCharacteristic(Characteristic.Saturation)
         .onGet(async () => { await this.refresh(); return this.saturation; })
         .onSet(async value => { this.saturation = Number(value); await this.sendColor(); });
+    } else {
+      this.removeCharacteristic(Characteristic.Hue);
+      this.removeCharacteristic(Characteristic.Saturation);
     }
-    if (['rgbcct', 'cct'].includes(this.capability)) {
+    if (supportsTemperature) {
       this.service.getCharacteristic(Characteristic.ColorTemperature)
         .onGet(() => 250)
         .onSet(async (value: CharacteristicValue) => {
@@ -81,13 +94,33 @@ export class MagicHomeAccessory {
             coolWhite: 255 * (1 - ratio) * this.brightness / 100,
           }));
         });
+    } else {
+      this.removeCharacteristic(Characteristic.ColorTemperature);
     }
+  }
+
+  private removeCharacteristic(type: typeof this.platform.Characteristic.Brightness): void {
+    if (this.service.testCharacteristic(type)) this.service.removeCharacteristic(this.service.getCharacteristic(type));
   }
 
   update(device: DiscoveredDevice, state?: DeviceState): void {
     this.device = device;
     this.disabledReason = undefined;
-    if (state) { this.state = state; this.capability = state.capability; }
+    const { Service, Characteristic } = this.platform;
+    this.accessory.getService(Service.AccessoryInformation)!
+      .setCharacteristic(Characteristic.Model, this.modelLabel(device));
+    this.service.setCharacteristic(Characteristic.Name, device.name ?? this.accessory.displayName);
+    if (state) {
+      this.state = state;
+      const capabilityChanged = this.capability !== state.capability;
+      this.capability = state.capability;
+      if (capabilityChanged) this.syncOptionalCharacteristics();
+    }
+  }
+
+  private modelLabel(device: DiscoveredDevice): string {
+    const type = device.deviceType === 'led-strip' ? 'LED Strip' : device.deviceType === 'lightbulb' ? 'Lightbulb' : undefined;
+    return [type, device.model].filter(Boolean).join(' · ') || 'LAN controller';
   }
 
   disable(reason: string): void {
@@ -95,7 +128,10 @@ export class MagicHomeAccessory {
   }
 
   private transport(): MagicHomeTransport {
-    return new MagicHomeTransport(this.device.host, this.platform.transportOptions());
+    return new MagicHomeTransport(this.device.host, {
+      ...this.platform.transportOptions(),
+      ...(this.device.colorOrder ? { colorOrder: this.device.colorOrder } : {}),
+    });
   }
 
   private async refresh(): Promise<DeviceState> {

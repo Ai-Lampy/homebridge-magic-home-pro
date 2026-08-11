@@ -23,9 +23,17 @@ export interface DiscoveryConfig {
 
 export interface ManualDeviceConfig {
   name?: string;
+  location?: string;
   host: string;
   mac?: string;
+  deviceType?: DeviceType;
+  cctControl?: boolean;
+  colorControl?: ColorControlProfile;
+  colorOrder?: string;
 }
+
+export type DeviceType = 'led-strip' | 'lightbulb';
+export type ColorControlProfile = 'auto' | 'rgb' | 'rgbw' | 'rgbww' | 'rgbcct' | 'rgbwcct' | 'rgbwwcw';
 
 export interface MagicHomeConfig extends PlatformConfig {
   platform: 'MagicHomePro';
@@ -42,6 +50,11 @@ export interface DiscoveredDevice {
   mac?: string;
   model?: string;
   name?: string;
+  location?: string;
+  deviceType?: DeviceType;
+  cctControl?: boolean;
+  colorControl?: ColorControlProfile;
+  colorOrder?: string;
   source: string;
   sources: string[];
 }
@@ -66,6 +79,11 @@ export interface CachedDeviceContext {
   host: string;
   mac?: string;
   model?: string;
+  location?: string;
+  deviceType?: DeviceType;
+  cctControl?: boolean;
+  colorControl?: ColorControlProfile;
+  colorOrder?: string;
   capability?: Capability;
   lastSeen?: string;
 }

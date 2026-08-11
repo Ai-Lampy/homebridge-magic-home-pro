@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { isIPv4, normalizeMac } from './network.js';
-import type { CachedDeviceContext, DiscoveredDevice } from './types.js';
+import { normalizeColorOrder } from './capability.js';
+import type { CachedDeviceContext, ColorControlProfile, DeviceType, DiscoveredDevice } from './types.js';
 
 export function stableDeviceId(device: Pick<DiscoveredDevice, 'mac' | 'name' | 'model' | 'host'>): string {
   const mac = normalizeMac(device.mac);
@@ -22,12 +23,22 @@ export function readCachedContext(value: unknown): CachedDeviceContext | undefin
   const capabilities: CachedDeviceContext['capability'][] = ['rgb', 'rgbw', 'rgbcct', 'cct', 'dimmer', 'switch', 'unknown'];
   const capability = typeof item.capability === 'string' && capabilities.includes(item.capability as CachedDeviceContext['capability'])
     ? item.capability as NonNullable<CachedDeviceContext['capability']> : undefined;
+  const deviceTypes: DeviceType[] = ['led-strip', 'lightbulb'];
+  const colorProfiles: ColorControlProfile[] = ['auto', 'rgb', 'rgbw', 'rgbww', 'rgbcct', 'rgbwcct', 'rgbwwcw'];
+  const colorOrder = normalizeColorOrder(item.colorOrder);
   return {
     schemaVersion: 1,
     stableId: item.stableId,
     host: item.host,
     ...(mac ? { mac } : {}),
     ...(typeof item.model === 'string' ? { model: item.model } : {}),
+    ...(typeof item.location === 'string' ? { location: item.location } : {}),
+    ...(typeof item.deviceType === 'string' && deviceTypes.includes(item.deviceType as DeviceType)
+      ? { deviceType: item.deviceType as DeviceType } : {}),
+    ...(typeof item.cctControl === 'boolean' ? { cctControl: item.cctControl } : {}),
+    ...(typeof item.colorControl === 'string' && colorProfiles.includes(item.colorControl as ColorControlProfile)
+      ? { colorControl: item.colorControl as ColorControlProfile } : {}),
+    ...(colorOrder ? { colorOrder } : {}),
     ...(capability ? { capability } : {}),
     ...(typeof item.lastSeen === 'string' ? { lastSeen: item.lastSeen } : {}),
   };

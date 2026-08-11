@@ -2,6 +2,7 @@ import type {
   API, Characteristic, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service,
 } from 'homebridge';
 import { MagicHomeAccessory } from './accessory.js';
+import { effectiveCapability } from './capability.js';
 import { normalizeConfig } from './config.js';
 import { discoverDevices } from './discovery.js';
 import { readCachedContext, stableDeviceId } from './identity.js';
@@ -101,6 +102,11 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
         host: device.host,
         ...(mac ? { mac } : {}),
         ...(device.name ? { name: device.name } : {}),
+        ...(device.location ? { location: device.location } : {}),
+        ...(device.deviceType ? { deviceType: device.deviceType } : {}),
+        ...(device.cctControl !== undefined ? { cctControl: device.cctControl } : {}),
+        ...(device.colorControl ? { colorControl: device.colorControl } : {}),
+        ...(device.colorOrder ? { colorOrder: device.colorOrder } : {}),
         source: 'configuration',
         sources: ['configuration'],
       };
@@ -139,7 +145,10 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
   private async probeAndRegister(device: DiscoveredDevice, registerNewDevice: boolean): Promise<string | undefined> {
     let state;
     try {
-      state = await new MagicHomeTransport(device.host, this.transportOptions()).queryState();
+      state = await new MagicHomeTransport(device.host, {
+        ...this.transportOptions(),
+        ...(device.colorOrder ? { colorOrder: device.colorOrder } : {}),
+      }).queryState();
     } catch (error) {
       const cached = [...this.cached.values()].find(accessory => readCachedContext(accessory.context)?.host === device.host);
       if (cached) this.log.warn(`Previously known device ${cached.displayName} at ${device.host} is offline: ${(error as Error).message}`);
@@ -148,6 +157,14 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
     }
     if (state.capability === 'unknown') {
       this.log.warn(`Controller at ${device.host} answered, but hardware capability is unknown (firmware ${state.firmwareBytes})`);
+    }
+    const detectedCapability = state.capability;
+    state = {
+      ...state,
+      capability: effectiveCapability(detectedCapability, device.colorControl, device.cctControl),
+    };
+    if (state.capability !== detectedCapability) {
+      this.log.info(`Capability override for ${device.name ?? device.host}: ${detectedCapability} → ${state.capability}`);
     }
     let accessory = [...this.cached.values()].find(item => readCachedContext(item.context)?.host === device.host);
     const stableId = accessory ? readCachedContext(accessory.context)!.stableId : stableDeviceId(device);
@@ -165,6 +182,11 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
       host: device.host,
       ...(normalizedMac ? { mac: normalizedMac } : {}),
       ...(device.model ? { model: device.model } : {}),
+      ...(device.location ? { location: device.location } : {}),
+      ...(device.deviceType ? { deviceType: device.deviceType } : {}),
+      ...(device.cctControl !== undefined ? { cctControl: device.cctControl } : {}),
+      ...(device.colorControl ? { colorControl: device.colorControl } : {}),
+      ...(device.colorOrder ? { colorOrder: device.colorOrder } : {}),
       capability: state.capability,
       lastSeen: new Date().toISOString(),
     };
@@ -181,6 +203,7 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
         this.log.info(`${accessory.displayName} moved from ${previous?.host} to ${device.host}; HomeKit identity preserved`);
       }
       accessory.context = { ...context, stableId: previous?.stableId ?? stableId };
+      if (device.name && accessory.displayName !== device.name) accessory.displayName = device.name;
       this.api.updatePlatformAccessories([accessory]);
     }
     const handler = this.handlers.get(accessory.UUID);
@@ -243,6 +266,11 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
       host: context.host,
       ...(context.mac ? { mac: context.mac } : {}),
       ...(context.model ? { model: context.model } : {}),
+      ...(context.location ? { location: context.location } : {}),
+      ...(context.deviceType ? { deviceType: context.deviceType } : {}),
+      ...(context.cctControl !== undefined ? { cctControl: context.cctControl } : {}),
+      ...(context.colorControl ? { colorControl: context.colorControl } : {}),
+      ...(context.colorOrder ? { colorOrder: context.colorOrder } : {}),
       source: 'cache',
       sources: ['cache'],
     };
