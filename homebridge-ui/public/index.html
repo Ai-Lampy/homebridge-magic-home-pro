@@ -1,25 +1,19 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Magic Home Pro</title>
-  <style>
-    body { font: 14px system-ui, sans-serif; margin: 0; padding: 16px; color: var(--text-color, #222); }
-    textarea { box-sizing: border-box; width: 100%; min-height: 320px; font: 12px ui-monospace, monospace; }
-    button { margin: 12px 8px 12px 0; padding: 8px 14px; }
-    pre { overflow: auto; padding: 12px; background: rgba(127,127,127,.12); white-space: pre-wrap; }
-  </style>
-</head>
-<body>
+<style>
+  #config { box-sizing: border-box; width: 100%; min-height: 320px; font: 12px ui-monospace, monospace; }
+  #result { overflow: auto; padding: 12px; background: rgba(127,127,127,.12); white-space: pre-wrap; }
+</style>
+
+<div class="container-fluid px-0">
   <p>This plugin is LAN-only. Edit the platform JSON or run a read-only diagnostic scan; scanning never adds or removes accessories.</p>
-  <textarea id="config" aria-label="Platform configuration"></textarea>
+  <textarea id="config" class="form-control" aria-label="Platform configuration"></textarea>
   <div>
-    <button id="save">Save configuration</button>
-    <button id="scan">Run diagnostic scan</button>
+    <button id="save" class="btn btn-primary my-3 me-2">Save configuration</button>
+    <button id="scan" class="btn btn-secondary my-3">Run diagnostic scan</button>
   </div>
   <pre id="result">Ready.</pre>
-  <script>
+</div>
+
+<script>
     const editor = document.querySelector('#config');
     const result = document.querySelector('#result');
     let allConfig = [];
@@ -54,6 +48,4 @@
       } catch (error) { result.textContent = error.stack || error.message; }
       finally { homebridge.hideSpinner(); }
     });
-  </script>
-</body>
-</html>
+</script>
