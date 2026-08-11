@@ -1,8 +1,6 @@
-# Homebridge-Magic-Home-Pro
+# Homebridge Magic Home Pro
 
 A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi lights and controllers. It communicates only over your LAN: there is no MagicHome login, cloud token, fixed regional hostname, region allowlist, telemetry, or runtime controller-definition download.
-
-> This is an early beta scaffold. Test with your controller before relying on it, and report the sanitized diagnostic result for unknown hardware.
 
 ## Requirements
 
@@ -55,14 +53,14 @@ Install through Homebridge UI, then add the platform. Defaults work on a flat LA
 }
 ```
 
-Manual IPs and configured targets are attempted even if broadcast discovery fails. A MAC address in a manual entry is recommended because HomeKit accessory UUIDs use normalized MAC addresses whenever available; the last IP is cached but is never the identity of a discovered device. Accessories are retained while offline and never automatically pruned.
+Manual IPs and configured targets are attempted even if broadcast discovery fails. A MAC address in a manual entry is recommended because HomeKit accessory UUIDs use normalized MAC addresses whenever available; the last IP is cached but is never the identity of a discovered device. Accessories are retained while offline and are not automatically pruned. Devices explicitly removed through the plugin UI are removed from the accessory cache after Homebridge or the plugin child bridge restarts.
 
 ### Plugin configuration UI
 
 The custom Homebridge UI has two tabs and does not expose raw JSON:
 
 - **Scan for Devices** discovers controllers and shows their IP address, MAC address, model, detected control type, and TCP availability. A device is added only after the user reviews and confirms its settings.
-- **Devices** lists saved controllers and allows their settings to be edited.
+- **Devices** lists saved controllers and allows their settings to be edited or removed. Device removal uses a second confirmation step to prevent accidental deletion.
 
 Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, a colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and physical colour-output order. For example, use `GRB` if commands intended for red and green operate the opposite outputs. Colour-order letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).
 
@@ -85,7 +83,7 @@ Optional subnet probing is disabled by default. It scans only explicitly configu
 
 ## Diagnostics
 
-The custom configuration UI has **Scan for Devices** and **Devices** tabs. Each scan result has an explicit **Add Device** action; this saves the chosen device settings to the manual `devices` list. The Devices tab lets you edit or remove configured controllers. Removing a device also records it as excluded, so after Homebridge or the plugin child bridge restarts its cached accessory is unregistered and automatic discovery does not immediately add it again. Adding the controller again clears that exclusion.
+The custom configuration UI has **Scan for Devices** and **Devices** tabs. Each scan result has an explicit **Add Device** action; this saves the chosen device settings to the manual `devices` list. The Devices tab lets you edit or remove configured controllers. Select **Remove Device**, then **Confirm Remove**; **Cancel** leaves it unchanged. Removing a device also records it as excluded, so after Homebridge or the plugin child bridge restarts its cached accessory is unregistered and automatic discovery does not immediately add it again. Adding the controller again clears that exclusion.
 
 Restart Homebridge or the plugin child bridge after adding or removing a device so the accessory cache is updated.
 
@@ -102,19 +100,6 @@ If a controller is silent, verify:
 
 The transport attempts current `81 8A 8B` and legacy `EF 01 77` state queries and detects capability from replies. RGB, RGBW, RGB+CCT, CCT, dimmer, and switch capability classes are represented. Unknown response types remain registered diagnostically rather than crashing Homebridge.
 
-## Development
+## Support
 
-```sh
-pnpm install
-pnpm run check
-```
-
-Tests use simulated UDP/TCP controllers; real-hardware and multi-region provisioning validation remains necessary before specific models are declared compatible.
-
-GitHub Actions runs the complete build, lint, and test suite on Node.js 22, 24, and 26 for every push and pull request. The npm publication workflow cannot continue unless all three Node.js jobs pass.
-
-## Releases
-
-Every version must have a matching `## x.y.z` section in `CHANGELOG.md`. The npm publication workflow extracts that section, publishes the package, and creates a matching GitHub release tagged `vx.y.z`. Homebridge UI-X displays the GitHub release body under **Release Notes** and the packaged `CHANGELOG.md` under **Full Changelog** when users update the plugin.
-
-Version numbers follow semantic versioning during the `0.x` development series: substantial features or UI redesigns advance the minor version (`0.3.0` → `0.4.0`), while fixes and smaller changes advance the patch version (`0.4.0` → `0.4.1`).
+For problems or controller compatibility reports, open an issue on the [GitHub repository](https://github.com/Ai-Lampy/homebridge-magic-home-pro/issues). Include the Homebridge and Node.js versions, the controller model, and relevant plugin logs. Remove unrelated personal information before sharing logs publicly.

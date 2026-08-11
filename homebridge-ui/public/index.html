@@ -239,9 +239,28 @@
       remove.className = 'btn btn-danger';
       remove.type = 'button';
       remove.textContent = 'Remove Device';
+      const cancelRemove = document.createElement('button');
+      cancelRemove.className = 'btn btn-secondary';
+      cancelRemove.type = 'button';
+      cancelRemove.textContent = 'Cancel';
+      cancelRemove.hidden = true;
+      let confirmingRemoval = false;
+      cancelRemove.addEventListener('click', () => {
+        confirmingRemoval = false;
+        remove.textContent = 'Remove Device';
+        cancelRemove.hidden = true;
+      });
       remove.addEventListener('click', async () => {
         const configured = pluginConfig.devices[index];
-        if (!configured || !window.confirm(`Remove ${configured.name || configured.host} from Magic Home Pro?`)) return;
+        if (!configured) return;
+        if (!confirmingRemoval) {
+          confirmingRemoval = true;
+          remove.textContent = `Confirm Remove ${configured.name || configured.host}`;
+          cancelRemove.hidden = false;
+          return;
+        }
+        const previousDevices = [...pluginConfig.devices];
+        const previousExcludedDevices = [...pluginConfig.excludedDevices];
         try {
           homebridge.showSpinner();
           pluginConfig.devices.splice(index, 1);
@@ -255,12 +274,15 @@
           renderScanResults(latestReport);
           renderConfiguredDevices();
         } catch (error) {
+          pluginConfig.devices = previousDevices;
+          pluginConfig.excludedDevices = previousExcludedDevices;
+          renderConfiguredDevices();
           homebridge.toast.error(error.message, 'Could not remove device');
         } finally {
           homebridge.hideSpinner();
         }
       });
-      actions.append(remove);
+      actions.append(remove, cancelRemove);
     }
 
     card.append(heading, details, form, actions);

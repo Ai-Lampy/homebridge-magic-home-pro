@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.2
+
+- Fix the Devices tab removal action by replacing the iframe-dependent browser prompt with visible Confirm Remove and Cancel buttons.
+- Restore the device in the UI if saving its removal fails.
+
 ## 0.4.1
 
 - Give the Scan for Devices and Devices tabs white backgrounds for clearer navigation.
