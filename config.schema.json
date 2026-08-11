@@ -3,16 +3,20 @@
   "pluginType": "platform",
   "singular": true,
   "customUi": true,
+  "strictValidation": false,
   "schema": {
     "type": "object",
+    "required": ["name"],
+    "additionalProperties": false,
     "properties": {
-      "name": { "title": "Name", "type": "string", "default": "Magic Home Pro", "required": true },
+      "name": { "title": "Name", "type": "string", "default": "Magic Home Pro" },
       "logLevel": {
         "title": "Log level", "type": "string", "default": "info",
         "enum": ["error", "warn", "info", "debug", "trace"]
       },
       "discovery": {
         "title": "Discovery", "type": "object",
+        "additionalProperties": false,
         "properties": {
           "enabled": { "title": "Enable automatic discovery", "type": "boolean", "default": true },
           "timeoutMs": { "title": "Reply window / TCP timeout (ms)", "type": "integer", "default": 3000, "minimum": 250, "maximum": 30000 },
@@ -21,14 +25,15 @@
           "limitedBroadcast": { "title": "Try 255.255.255.255", "type": "boolean", "default": true },
           "targets": {
             "title": "Discovery targets", "description": "Individual IPs, directed broadcasts, or IPv4 CIDRs.",
-            "type": "array", "items": { "type": "string" }
+            "type": "array", "default": [], "items": { "type": "string" }
           },
-          "interfaces": { "title": "Interface names (blank means all)", "type": "array", "items": { "type": "string" } },
+          "interfaces": { "title": "Interface names (blank means all)", "type": "array", "default": [], "items": { "type": "string" } },
           "subnetProbe": {
             "title": "Bounded subnet probing", "type": "object",
+            "additionalProperties": false,
             "properties": {
               "enabled": { "title": "Enable explicit CIDR probing", "type": "boolean", "default": false },
-              "cidrs": { "title": "CIDRs", "type": "array", "items": { "type": "string" } },
+              "cidrs": { "title": "CIDRs", "type": "array", "default": [], "items": { "type": "string" } },
               "concurrency": { "title": "Concurrency", "type": "integer", "default": 10, "minimum": 1, "maximum": 64 },
               "ratePerSecond": { "title": "Maximum probes/second", "type": "integer", "default": 20, "minimum": 1, "maximum": 200 },
               "allowPublic": { "title": "Allow non-private ranges (unsafe)", "type": "boolean", "default": false }
@@ -37,12 +42,14 @@
         }
       },
       "devices": {
-        "title": "Manual devices", "type": "array",
+        "title": "Manual devices", "type": "array", "default": [],
         "items": {
           "type": "object",
+          "required": ["host"],
+          "additionalProperties": false,
           "properties": {
             "name": { "title": "Name", "type": "string" },
-            "host": { "title": "IPv4 address", "type": "string", "format": "ipv4", "required": true },
+            "host": { "title": "IPv4 address", "type": "string", "format": "ipv4" },
             "mac": { "title": "MAC address (recommended for stable identity)", "type": "string" }
           }
         }

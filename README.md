@@ -1,4 +1,4 @@
-# Homebridge-Magic-Home-Pro
+# homebridge-magic-home-pro
 
 A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi lights and controllers. It communicates only over your LAN: there is no MagicHome login, cloud token, fixed regional hostname, region allowlist, telemetry, or runtime controller-definition download.
 
@@ -7,7 +7,7 @@ A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi 
 ## Requirements
 
 - Homebridge 2
-- A Node.js release supported by Homebridge 2 (`22`, `24`, or `26` at the time of this beta)
+- Node.js `22.10.0` or later in the Node 22 line, or Node.js 24
 - A controller that exposes the MagicHome LAN protocol on UDP `48899` and/or TCP `5577`
 
 Provision the device onto Wi-Fi in its vendor app first. The plugin does not require an account or a particular cloud region afterward. “Region independent” means the plugin imposes no cloud-region dependency; some firmware may nevertheless disable or alter its LAN interface based on provisioning. Such cloud-only firmware cannot be controlled locally.
