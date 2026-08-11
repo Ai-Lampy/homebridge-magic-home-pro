@@ -62,6 +62,8 @@ The custom Homebridge UI has two accessible tabs and does not expose raw JSON:
 - **Scan for Devices** discovers controllers and shows their IP address, MAC address, model, detected control type, and TCP availability. A device is added only after the user reviews and confirms its settings.
 - **Devices** shows the saved-device count, keeps each detected control type visible, and presents a compact summary for every controller. Select **Edit Details** to open a device's settings. Device removal uses a second confirmation step to prevent accidental deletion.
 
+Save, update, and removal results are shown as a compact status inside the plugin UI rather than as a screen-covering notification.
+
 Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, an optional colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and optional physical colour-output remapping. Automatic colour control uses the detected controller type, so a detected dimmer is exposed in Apple Home with power and brightness controls rather than RGB controls unless the user deliberately overrides it.
 
 Colour-order remapping is off by default, allowing the controller to use the output order selected in its app. Enable a listed order only if colours do not match. For example, select `GRB` if commands intended for red and green operate the opposite outputs. The letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).

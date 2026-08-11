@@ -58,6 +58,8 @@ describe('Homebridge plugin metadata', () => {
     expect(ui).toContain('Edit Details');
     expect(ui).toContain('role="tablist"');
     expect(ui).toContain('aria-selected');
+    expect(ui).toContain('id="config-status"');
+    expect(ui).not.toContain('homebridge.toast.success');
     for (const field of ['Device Name', 'Location / Room label', 'Device Type', 'CCT Control', 'Colour Control', 'Colour Order']) {
       expect(ui).toContain(field);
     }

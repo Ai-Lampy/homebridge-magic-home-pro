@@ -4,6 +4,7 @@
 
 - Refresh the Plugin Config UI with a clearer header, accessible tabs, panel layout, scan status, device counts, capability badges, responsive forms, and improved empty states.
 - Keep configured device editors collapsed until Edit Details is selected, reducing clutter without removing any controls.
+- Replace large save popups with compact inline configuration status and error messages.
 
 ## 0.4.4
 

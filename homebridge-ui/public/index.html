@@ -57,6 +57,8 @@
     <button id="tab-devices" type="button" role="tab" aria-selected="false" aria-controls="panel-devices">Devices</button>
   </nav>
 
+  <p id="config-status" class="status-line" aria-live="polite" hidden></p>
+
   <section id="panel-scan" class="plugin-panel" role="tabpanel" aria-labelledby="tab-scan">
     <div class="panel-heading">
       <div>
@@ -108,6 +110,7 @@
   const devicesPanel = document.querySelector('#panel-devices');
   const scanTab = document.querySelector('#tab-scan');
   const devicesTab = document.querySelector('#tab-devices');
+  const configStatus = document.querySelector('#config-status');
   const scanStatus = document.querySelector('#scan-status');
   const scanButton = document.querySelector('#scan');
   const scanResults = document.querySelector('#scan-results');
@@ -197,12 +200,19 @@
     return device.name || device.model || `MagicHome ${normalizeMac(device.mac).slice(-6) || device.host}`;
   }
 
+  function showConfigStatus(message, type = 'success') {
+    configStatus.textContent = message;
+    configStatus.classList.remove('success', 'error');
+    configStatus.classList.add(type);
+    configStatus.hidden = false;
+  }
+
   async function persistConfig(message) {
     pluginConfig.platform = 'MagicHomePro';
     pluginConfig.name = pluginConfig.name || 'Magic Home Pro';
     await homebridge.updatePluginConfig([pluginConfig]);
     await homebridge.savePluginConfig();
-    homebridge.toast.success(message, 'Magic Home Pro');
+    showConfigStatus(message);
   }
 
   function deviceEditor(device, index, detected) {
@@ -303,7 +313,7 @@
         renderScanResults(latestReport);
         renderConfiguredDevices();
       } catch (error) {
-        homebridge.toast.error(error.message, 'Could not save device');
+        showConfigStatus(`Could not save device: ${error.message}`, 'error');
       } finally {
         homebridge.hideSpinner();
       }
@@ -353,7 +363,7 @@
           pluginConfig.devices = previousDevices;
           pluginConfig.excludedDevices = previousExcludedDevices;
           renderConfiguredDevices();
-          homebridge.toast.error(error.message, 'Could not remove device');
+          showConfigStatus(`Could not remove device: ${error.message}`, 'error');
         } finally {
           homebridge.hideSpinner();
         }
