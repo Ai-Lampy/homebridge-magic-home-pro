@@ -1,22 +1,26 @@
 <style>
   #config { box-sizing: border-box; width: 100%; min-height: 320px; font: 12px ui-monospace, monospace; }
   #result { overflow: auto; padding: 12px; background: rgba(127,127,127,.12); white-space: pre-wrap; }
+  #devices { display: grid; gap: 12px; margin-top: 12px; }
+  .device-card { border: 1px solid rgba(127,127,127,.35); border-radius: 6px; padding: 12px; }
+  .device-card p { margin: 4px 0 10px; }
 </style>
 
 <div class="container-fluid px-0">
-  <p>This plugin is LAN-only. Edit the platform JSON or run a read-only diagnostic scan; scanning never adds or removes accessories.</p>
+  <p>This plugin is LAN-only. Scan the network, then explicitly add any discovered controllers you want the plugin to manage.</p>
   <textarea id="config" class="form-control" aria-label="Platform configuration"></textarea>
   <div>
     <button id="save" class="btn btn-primary my-3 me-2">Save configuration</button>
     <button id="scan" class="btn btn-secondary my-3">Run diagnostic scan</button>
   </div>
   <pre id="result">Ready.</pre>
+  <div id="devices" aria-live="polite"></div>
 </div>
 
 <script>
     const editor = document.querySelector('#config');
     const result = document.querySelector('#result');
-    let allConfig = [];
+    const devices = document.querySelector('#devices');
 
     function parseConfig() {
       const value = JSON.parse(editor.value);
@@ -24,8 +28,91 @@
       return value;
     }
 
+    function normalizedMac(value) {
+      return typeof value === 'string' ? value.replace(/[^a-f0-9]/gi, '').toUpperCase() : '';
+    }
+
+    function configuredDeviceIndex(config, device) {
+      const foundMac = normalizedMac(device.mac);
+      const configured = Array.isArray(config.devices) ? config.devices : [];
+      const macIndex = foundMac
+        ? configured.findIndex(item => normalizedMac(item.mac) === foundMac)
+        : -1;
+      return macIndex >= 0 ? macIndex : configured.findIndex(item => item.host === device.host);
+    }
+
+    function proposedName(device) {
+      if (device.model) return device.model;
+      const suffix = normalizedMac(device.mac).slice(-6) || device.host;
+      return `MagicHome ${suffix}`;
+    }
+
+    async function saveDevice(device) {
+      const config = parseConfig();
+      config.devices = Array.isArray(config.devices) ? config.devices : [];
+      const index = configuredDeviceIndex(config, device);
+      const details = {
+        host: device.host,
+        ...(device.mac ? { mac: normalizedMac(device.mac) } : {}),
+      };
+      if (index >= 0) {
+        config.devices[index] = { ...config.devices[index], ...details };
+      } else {
+        config.devices.push({ name: proposedName(device), ...details });
+      }
+      editor.value = JSON.stringify(config, null, 2);
+      await homebridge.updatePluginConfig([config]);
+      await homebridge.savePluginConfig();
+      homebridge.toast.success(
+        index >= 0 ? 'Device details updated' : 'Device added to the plugin configuration',
+        'Magic Home Pro',
+      );
+    }
+
+    function renderDevices(report) {
+      devices.replaceChildren();
+      if (!Array.isArray(report) || report.length === 0) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No MagicHome controllers were found.';
+        devices.append(empty);
+        return;
+      }
+      const config = parseConfig();
+      for (const device of report) {
+        const card = document.createElement('section');
+        card.className = 'device-card';
+        const title = document.createElement('strong');
+        title.textContent = device.model || device.mac || device.host;
+        const details = document.createElement('p');
+        const status = device.tcpReachable ? 'TCP control available' : `TCP unavailable: ${device.error || 'no response'}`;
+        details.textContent = `${device.host}${device.mac ? ` · ${device.mac}` : ''}${device.capability ? ` · ${device.capability}` : ''} · ${status}`;
+        const button = document.createElement('button');
+        const index = configuredDeviceIndex(config, device);
+        const existing = index >= 0 ? config.devices[index] : undefined;
+        const needsUpdate = existing && (
+          existing.host !== device.host || (!normalizedMac(existing.mac) && normalizedMac(device.mac))
+        );
+        button.className = 'btn btn-sm btn-primary';
+        button.textContent = index < 0 ? 'Add to configuration' : needsUpdate ? 'Update configuration' : 'Already configured';
+        button.disabled = index >= 0 && !needsUpdate;
+        button.addEventListener('click', async () => {
+          try {
+            homebridge.showSpinner();
+            await saveDevice(device);
+            renderDevices(report);
+          } catch (error) {
+            homebridge.toast.error(error.message, 'Could not add device');
+          } finally {
+            homebridge.hideSpinner();
+          }
+        });
+        card.append(title, details, button);
+        devices.append(card);
+      }
+    }
+
     (async () => {
-      allConfig = await homebridge.getPluginConfig();
+      const allConfig = await homebridge.getPluginConfig();
       const config = allConfig[0] || { platform: 'MagicHomePro', name: 'Magic Home Pro' };
       editor.value = JSON.stringify(config, null, 2);
     })().catch(error => { result.textContent = error.message; });
@@ -43,8 +130,10 @@
       try {
         homebridge.showSpinner();
         result.textContent = 'Scanning…';
+        devices.replaceChildren();
         const report = await homebridge.request('/diagnostic-scan', { config: parseConfig() });
         result.textContent = JSON.stringify(report, null, 2);
+        renderDevices(report);
       } catch (error) { result.textContent = error.stack || error.message; }
       finally { homebridge.hideSpinner(); }
     });
