@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.3
+
+- Clear saved and cached Colour Control and Colour Order overrides when their enable checkboxes are switched off, restoring automatically detected/default controller behaviour after restart.
+- Show enabled CCT, Colour Control and Colour Order options in each configured-device summary, including the selected physical colour order, and move the compact room note below the device list.
+
 ## 0.5.2
 
 - Hide the Colour Control and Colour Order selections until their corresponding override checkboxes are enabled.

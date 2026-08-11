@@ -149,6 +149,21 @@ describe('custom Config UI behaviour', () => {
       colorControl: 'rgbw',
       colorOrder: 'RGBW',
     })]);
+    expect(ui.all('configured-devices').some(element => element.textContent.includes('Colour control: RGBW'))).toBe(true);
+    expect(ui.all('configured-devices').some(element => element.textContent.includes('Colour order: RGBW'))).toBe(true);
+
+    await ui.button('configured-devices', 'Edit Details').dispatch('click');
+    const enabledOverrides = ui.all('configured-devices').filter(element => element.type === 'checkbox');
+    enabledOverrides[1]!.checked = false;
+    enabledOverrides[2]!.checked = false;
+    await ui.button('configured-devices', 'Save Changes').dispatch('click');
+    expect(ui.updates.at(-1)?.[0].devices).toEqual([expect.objectContaining({
+      colorControlOverride: false,
+    })]);
+    expect(ui.updates.at(-1)?.[0].devices[0]).not.toHaveProperty('colorControl');
+    expect(ui.updates.at(-1)?.[0].devices[0]).not.toHaveProperty('colorOrder');
+    expect(ui.all('configured-devices').some(element => element.textContent.includes('Colour control:'))).toBe(false);
+    expect(ui.all('configured-devices').some(element => element.textContent.includes('Colour order:'))).toBe(false);
 
     await ui.button('configured-devices', 'Remove Device').dispatch('click');
     await ui.button('configured-devices', 'Confirm Remove Kitchen').dispatch('click');

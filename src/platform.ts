@@ -140,6 +140,13 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
       const merged = existing
         ? { ...existing, ...device, sources: [...new Set([...existing.sources, ...device.sources])] }
         : { ...device, sources: [...device.sources] };
+      // The saved configuration is authoritative for optional overrides. When a
+      // user disables an override its property is deliberately absent, so do not
+      // let an older cached value survive the candidate merge.
+      if (device.source === 'configuration') {
+        if (!device.colorControlOverride) delete merged.colorControl;
+        if (!device.colorOrder) delete merged.colorOrder;
+      }
       if (existingKey && existingKey !== key) result.delete(existingKey);
       result.set(normalizeMac(merged.mac) ?? key, merged);
     }

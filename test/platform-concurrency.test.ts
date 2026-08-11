@@ -21,4 +21,27 @@ describe('scan concurrency', () => {
     expect(firstResult).toEqual(new Set(['device']));
     expect(secondResult).toBe(firstResult);
   });
+
+  it('clears cached colour overrides when they are disabled in configuration', () => {
+    const platform = Object.create(MagicHomePlatform.prototype) as MagicHomePlatform;
+    const merged = (platform as unknown as {
+      mergeCandidates(input: Array<Record<string, unknown>>): Array<Record<string, unknown>>;
+    }).mergeCandidates([
+      {
+        host: '192.168.1.20', mac: 'AABBCCDDEEFF', colorControl: 'rgbw',
+        colorControlOverride: true, colorOrder: 'GRBW', source: 'cache', sources: ['cache'],
+      },
+      {
+        host: '192.168.1.20', mac: 'AABBCCDDEEFF', colorControlOverride: false,
+        source: 'configuration', sources: ['configuration'],
+      },
+    ]);
+
+    expect(merged).toEqual([expect.objectContaining({
+      host: '192.168.1.20', colorControlOverride: false,
+      sources: ['cache', 'configuration'],
+    })]);
+    expect(merged[0]).not.toHaveProperty('colorControl');
+    expect(merged[0]).not.toHaveProperty('colorOrder');
+  });
 });

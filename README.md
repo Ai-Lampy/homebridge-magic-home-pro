@@ -79,6 +79,8 @@ Each saved device supports a friendly name, a location/room label, LED Strip or 
 
 Colour-order remapping is off by default, allowing the controller to use the output order selected in its app. Enable a listed order only if colours do not match. For example, select `GRB` if commands intended for red and green operate the opposite outputs. The letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).
 
+Switching off Colour Control or Colour Order removes that override from both the saved configuration and the device's cached runtime settings after restart. The plugin then returns to automatic capability detection or the controller/app colour order.
+
 The Device Name is applied to the Homebridge cached accessory and its HomeKit name characteristics. Apple Home may retain a name previously customised by the user in the Home app.
 
 The MAC Address is detected by the plugin and displayed as read-only because it provides the stable HomeKit accessory identity.

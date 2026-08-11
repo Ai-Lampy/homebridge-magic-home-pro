@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.5.2',
+      version: '0.5.3',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -58,6 +58,12 @@ describe('Homebridge plugin metadata', () => {
     expect(ui).toContain("throw new Error('Enter a valid IPv4 address.')");
     expect(ui).toContain('mac.readOnly = true');
     expect(ui).toContain('Detected control:');
+    expect(ui).toContain('CCT control: enabled');
+    expect(ui).toContain('Colour control:');
+    expect(ui).toContain('Colour order:');
+    expect(ui).toContain('height: 40px');
+    expect(ui).toContain('font-size: 12px');
+    expect(ui.indexOf('id="configured-devices"')).toBeLessThan(ui.indexOf('alert alert-info room-note'));
     expect(ui).toContain('homebridge.getCachedAccessories()');
     expect(ui).toContain('background: #fff');
     expect(ui).toContain('Configured devices');

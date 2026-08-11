@@ -34,7 +34,7 @@
   .checkbox-field .form-label { display: flex; align-items: center; gap: 8px; margin: 0; }
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 18px; }
   .empty-state { margin: 16px 0 0; border: 1px dashed rgba(102,112,133,.45); border-radius: 10px; color: var(--mhp-muted); background: var(--mhp-soft); padding: 22px; text-align: center; }
-  .room-note { margin: 0; border: 0; border-radius: 8px; background: #eef6ff; color: #344054; }
+  .room-note { display: flex; align-items: center; height: 40px; margin: 14px 0 0; border: 0; border-radius: 8px; background: #eef6ff; color: #344054; padding: 0 12px; font-size: 12px; line-height: 1.25; overflow: auto; }
   [hidden] { display: none !important; }
   @media (max-width: 640px) {
     .plugin-intro, .plugin-panel { padding: 16px; }
@@ -78,10 +78,10 @@
         <p>Review saved controllers and open only the device you want to change.</p>
       </div>
     </div>
+    <div id="configured-devices" class="device-list" aria-live="polite"></div>
     <div class="alert alert-info room-note">
       The Location field is stored as a room label. Apple Home controls its own room membership, so select the final room in the Apple Home app.
     </div>
-    <div id="configured-devices" class="device-list" aria-live="polite"></div>
   </section>
 </div>
 
@@ -240,6 +240,10 @@
       device.mac ? `MAC: ${normalizeMac(device.mac)}` : undefined,
       device.model ? `Model: ${device.model}` : undefined,
       detectedCapability ? `Detected control: ${detectedCapability.toUpperCase()}` : 'Detected control: not yet available',
+      device.cctControl ? 'CCT control: enabled' : undefined,
+      device.colorControlOverride && device.colorControl
+        ? `Colour control: ${String(device.colorControl).toUpperCase()}` : undefined,
+      device.colorOrder ? `Colour order: ${normalizeColorOrder(device.colorOrder)}` : undefined,
       typeof detected?.tcpReachable === 'boolean'
         ? (detected.tcpReachable ? 'TCP control available' : `TCP unavailable: ${detected.error || 'no response'}`)
         : undefined,
@@ -322,8 +326,8 @@
           ...(normalizeMac(mac.value) ? { mac: normalizeMac(mac.value) } : {}),
           deviceType: deviceType.value,
           cctControl: cctControl.checked,
-          colorControl: colorControlEnabled.checked ? colorControl.value : 'auto',
           colorControlOverride: colorControlEnabled.checked,
+          ...(colorControlEnabled.checked ? { colorControl: colorControl.value } : {}),
           ...(order ? { colorOrder: order } : {}),
           ...(detectedCapability ? { detectedCapability } : {}),
         };
@@ -332,6 +336,7 @@
         const targetIndex = index === undefined ? configuredDeviceIndex(device) : index;
         if (targetIndex >= 0) pluginConfig.devices[targetIndex] = { ...pluginConfig.devices[targetIndex], ...updated };
         else pluginConfig.devices.push(updated);
+        if (targetIndex >= 0 && !colorControlEnabled.checked) delete pluginConfig.devices[targetIndex].colorControl;
         if (targetIndex >= 0 && !order) delete pluginConfig.devices[targetIndex].colorOrder;
         await persistConfig(targetIndex >= 0
           ? 'Device configuration updated. Restart Homebridge to apply the changes.'
