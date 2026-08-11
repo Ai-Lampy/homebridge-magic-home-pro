@@ -7,7 +7,7 @@ A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi 
 ## Requirements
 
 - Homebridge 2
-- Node.js `22.10.0` or later in the Node 22 line, or Node.js 24
+- Node.js `22.10.0` or later in the Node 22 line, Node.js 24, or Node.js 26
 - A controller that exposes the MagicHome LAN protocol on UDP `48899` and/or TCP `5577`
 
 Provision the device onto Wi-Fi in its vendor app first. The plugin does not require an account or a particular cloud region afterward. “Region independent” means the plugin imposes no cloud-region dependency; some firmware may nevertheless disable or alter its LAN interface based on provisioning. Such cloud-only firmware cannot be controlled locally.
@@ -97,6 +97,8 @@ pnpm run check
 ```
 
 Tests use simulated UDP/TCP controllers; real-hardware and multi-region provisioning validation remains necessary before specific models are declared compatible.
+
+GitHub Actions runs the complete build, lint, and test suite on Node.js 22, 24, and 26 for every push and pull request. The npm publication workflow cannot continue unless all three Node.js jobs pass.
 
 ## Releases
 

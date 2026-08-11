@@ -4,6 +4,7 @@
 
 - Let users add or update controllers found by the diagnostic scan directly from the Homebridge UI.
 - Keep `homebridge` exclusively in development dependencies and declare HAP as the supported transport.
+- Test every GitHub update on Node.js 22, 24, and 26, and require all three checks before npm publication.
 
 ## 0.2.0
 
