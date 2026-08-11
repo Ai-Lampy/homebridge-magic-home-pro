@@ -64,11 +64,13 @@ The custom Homebridge UI has two accessible tabs and does not expose raw JSON:
 
 Save, update, and removal results are shown as a compact status inside the plugin UI rather than as a screen-covering notification.
 
-Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, an optional colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and optional physical colour-output remapping. Automatic colour control uses the detected controller type, so a detected dimmer is exposed in Apple Home with power and brightness controls rather than RGB controls unless the user deliberately overrides it.
+Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, an optional colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and optional physical colour-output remapping. The Colour Control and Colour Order dropdowns remain disabled until their corresponding enable checkbox is selected. Automatic colour control uses the detected controller type, so a detected dimmer is exposed in Apple Home with power and brightness controls rather than RGB controls unless the user deliberately overrides it.
 
 Colour-order remapping is off by default, allowing the controller to use the output order selected in its app. Enable a listed order only if colours do not match. For example, select `GRB` if commands intended for red and green operate the opposite outputs. The letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).
 
 The Device Name is applied to the Homebridge cached accessory and its HomeKit name characteristics. Apple Home may retain a name previously customised by the user in the Home app.
+
+The MAC Address is detected by the plugin and displayed as read-only because it provides the stable HomeKit accessory identity.
 
 The Location field is plugin metadata. HomeKit does not allow a bridge plugin to assign Apple Home rooms; select the actual room for the accessory in the Apple Home app after it is added.
 

@@ -87,7 +87,6 @@
 
 <script>
   const colorProfiles = [
-    ['auto', 'Automatic (use detected control)'],
     ['rgb', 'RGB'],
     ['rgbw', 'RGBW'],
     ['rgbww', 'RGBWW'],
@@ -96,7 +95,6 @@
     ['rgbwwcw', 'RGBWWCW'],
   ];
   const colorOrders = [
-    ['', 'Off (use controller/app setting)'],
     ['RGB', 'RGB'], ['RBG', 'RBG'], ['GRB', 'GRB'], ['GBR', 'GBR'], ['BRG', 'BRG'], ['BGR', 'BGR'],
     ['RGBW', 'RGBW'], ['RBGW', 'RBGW'], ['GRBW', 'GRBW'], ['GBRW', 'GBRW'], ['BRGW', 'BRGW'], ['BGRW', 'BGRW'],
     ['RGBWC', 'RGBWC'], ['RBGWC', 'RBGWC'], ['GRBWC', 'GRBWC'], ['GBRWC', 'GBRWC'], ['BRGWC', 'BRGWC'], ['BGRWC', 'BGRWC'],
@@ -261,22 +259,34 @@
     const host = input(device.host || '');
     host.required = true;
     const mac = input(normalizeMac(device.mac));
+    mac.readOnly = true;
     const inferredType = /bulb/i.test(device.model || '') ? 'lightbulb' : 'led-strip';
     const deviceType = select([['led-strip', 'LED Strip'], ['lightbulb', 'Lightbulb']], device.deviceType || inferredType);
-    const profileValue = device.colorControlOverride === true ? device.colorControl || 'auto' : 'auto';
+    const detectedProfile = ['rgb', 'rgbw', 'rgbcct'].includes(detectedCapability) ? detectedCapability : 'rgb';
+    const profileValue = device.colorControl && device.colorControl !== 'auto' ? device.colorControl : detectedProfile;
+    const colorControlEnabled = input(device.colorControlOverride === true, 'checkbox');
     const colorControl = select(colorProfiles, profileValue);
+    colorControl.disabled = !colorControlEnabled.checked;
     const cctControl = input(Boolean(device.cctControl), 'checkbox');
-    const colorOrder = select(colorOrders, normalizeColorOrder(device.colorOrder));
+    const configuredOrder = normalizeColorOrder(device.colorOrder);
+    const defaultOrder = detectedProfile === 'rgbcct' ? 'RGBWC' : detectedProfile === 'rgbw' ? 'RGBW' : 'RGB';
+    const colorOrderEnabled = input(Boolean(configuredOrder), 'checkbox');
+    const colorOrder = select(colorOrders, configuredOrder || defaultOrder);
+    colorOrder.disabled = !colorOrderEnabled.checked;
+    colorControlEnabled.addEventListener('change', () => { colorControl.disabled = !colorControlEnabled.checked; });
+    colorOrderEnabled.addEventListener('change', () => { colorOrder.disabled = !colorOrderEnabled.checked; });
 
     form.append(
       field('Device Name', name),
       field('Location / Room label', location, 'Choose the actual Apple Home room later in the Home app.'),
       field('IP Address', host),
-      field('MAC Address', mac, 'Used for stable HomeKit identity.'),
+      field('MAC Address', mac, 'Detected automatically and used for stable HomeKit identity.'),
       field('Device Type', deviceType),
-      field('Colour Control', colorControl, 'Override automatic capability detection when required.'),
       field('CCT Control', cctControl, 'Force colour-temperature controls even when the controller does not report CCT support.'),
-      field('Colour Order', colorOrder, 'Leave off to use the controller order configured by its app. Select a remap only when colours do not match.'),
+      field('Enable Colour Control', colorControlEnabled, 'Turn on only to override the automatically detected control type.'),
+      field('Colour Control', colorControl, 'Choose the control type exposed to Apple Home.'),
+      field('Enable Colour Order', colorOrderEnabled, 'Turn on only when controller colours do not match their expected outputs.'),
+      field('Colour Order', colorOrder, 'Choose the physical output remap. Leave the function off to use the controller/app setting.'),
     );
 
     const actions = document.createElement('div');
@@ -288,7 +298,7 @@
     save.addEventListener('click', async () => {
       try {
         if (!name.value.trim() || !host.value.trim()) throw new Error('Device Name and IP Address are required.');
-        const order = normalizeColorOrder(colorOrder.value);
+        const order = colorOrderEnabled.checked ? normalizeColorOrder(colorOrder.value) : '';
         const updated = {
           name: name.value.trim(),
           ...(location.value.trim() ? { location: location.value.trim() } : {}),
@@ -296,8 +306,8 @@
           ...(normalizeMac(mac.value) ? { mac: normalizeMac(mac.value) } : {}),
           deviceType: deviceType.value,
           cctControl: cctControl.checked,
-          colorControl: colorControl.value,
-          colorControlOverride: colorControl.value !== 'auto',
+          colorControl: colorControlEnabled.checked ? colorControl.value : 'auto',
+          colorControlOverride: colorControlEnabled.checked,
           ...(order ? { colorOrder: order } : {}),
           ...(detectedCapability ? { detectedCapability } : {}),
         };

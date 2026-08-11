@@ -1,7 +1,7 @@
 {
   "name": "homebridge-magic-home-pro",
   "displayName": "Magic Home Pro",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Local-only Homebridge platform for MagicHome and LEDnet Wi-Fi controllers",
   "author": "Ai-Lampy",
   "license": "MIT",

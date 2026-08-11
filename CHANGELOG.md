@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1
+
+- Add explicit enable checkboxes for Colour Control and Colour Order overrides, and make discovered MAC addresses read-only.
+
 ## 0.5.0
 
 - Refresh the Plugin Config UI with a clearer header, accessible tabs, panel layout, scan status, device counts, capability badges, responsive forms, and improved empty states.
