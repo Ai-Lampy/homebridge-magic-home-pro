@@ -1,0 +1,58 @@
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { describe, expect, it } from 'vitest';
+
+describe('Homebridge plugin metadata', () => {
+  it('declares the package fields used by Homebridge', () => {
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    expect(pkg).toMatchObject({
+      name: 'homebridge-magic-home-pro',
+      displayName: 'Magic Home Pro',
+      version: '0.3.0',
+      main: 'dist/index.js',
+      engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0' },
+    });
+    expect(pkg.keywords).toEqual(expect.arrayContaining(['homebridge-plugin', 'supports-hap']));
+    expect(pkg.keywords).not.toContain('supports-matter');
+    expect(pkg.devDependencies.homebridge).toBe('^2.3.0');
+    for (const field of ['dependencies', 'optionalDependencies', 'bundledDependencies', 'peerDependencies']) {
+      const declaration = pkg[field];
+      if (Array.isArray(declaration)) expect(declaration).not.toContain('homebridge');
+      else expect(declaration ?? {}).not.toHaveProperty('homebridge');
+    }
+  });
+
+  it('uses a strict object schema with the expected platform identity', () => {
+    const configSchema = JSON.parse(fs.readFileSync('config.schema.json', 'utf8'));
+    expect(configSchema).toMatchObject({
+      pluginAlias: 'MagicHomePro',
+      pluginType: 'platform',
+      singular: true,
+      customUi: true,
+      schema: {
+        type: 'object',
+        required: ['name'],
+        additionalProperties: false,
+      },
+    });
+  });
+
+  it('publishes a Homebridge UI fragment rather than a complete HTML document', () => {
+    const ui = fs.readFileSync('homebridge-ui/public/index.html', 'utf8');
+    expect(ui).not.toMatch(/<(?:html|head|body)\b/i);
+    expect(ui).toContain('homebridge.getPluginConfig()');
+    expect(ui).toContain('Add to configuration');
+    expect(ui).toContain('homebridge.savePluginConfig()');
+  });
+
+  it('provides release notes for the package version', () => {
+    const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    const notes = execFileSync(process.execPath, ['scripts/extract-release-notes.mjs', pkg.version], {
+      encoding: 'utf8',
+    });
+    expect(notes).toContain('Homebridge UI');
+    const workflow = fs.readFileSync('.github/workflows/publish-npm.yml', 'utf8');
+    expect(workflow).toContain('gh release create');
+    expect(workflow).toContain('--notes-file release-notes.md');
+  });
+});
