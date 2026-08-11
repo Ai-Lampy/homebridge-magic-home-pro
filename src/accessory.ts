@@ -34,6 +34,7 @@ export class MagicHomeAccessory {
   private saturation = 0;
   private brightness = 100;
   private capability: Capability;
+  private disabledReason: string | undefined;
 
   constructor(
     private readonly platform: MagicHomePlatform,
@@ -54,7 +55,7 @@ export class MagicHomeAccessory {
     this.service.setCharacteristic(Characteristic.Name, accessory.displayName);
     this.service.getCharacteristic(Characteristic.On)
       .onGet(async () => (await this.refresh()).on)
-      .onSet(async value => this.transport().setPower(Boolean(value)));
+      .onSet(async value => this.execute(transport => transport.setPower(Boolean(value))));
     if (this.capability !== 'switch') {
       this.service.getCharacteristic(Characteristic.Brightness)
         .onGet(async () => (await this.refresh()).brightness)
@@ -74,18 +75,23 @@ export class MagicHomeAccessory {
         .onSet(async (value: CharacteristicValue) => {
           const mired = Math.max(140, Math.min(500, Number(value)));
           const ratio = (mired - 140) / 360;
-          await this.transport().setColor(this.capability, {
+          await this.execute(transport => transport.setColor(this.capability, {
             red: 0, green: 0, blue: 0,
             warmWhite: 255 * ratio * this.brightness / 100,
             coolWhite: 255 * (1 - ratio) * this.brightness / 100,
-          });
+          }));
         });
     }
   }
 
   update(device: DiscoveredDevice, state?: DeviceState): void {
     this.device = device;
+    this.disabledReason = undefined;
     if (state) { this.state = state; this.capability = state.capability; }
+  }
+
+  disable(reason: string): void {
+    this.disabledReason = reason;
   }
 
   private transport(): MagicHomeTransport {
@@ -93,13 +99,28 @@ export class MagicHomeAccessory {
   }
 
   private async refresh(): Promise<DeviceState> {
-    this.state = await this.transport().queryState();
+    this.state = await this.execute(transport => transport.queryState());
     [this.hue, this.saturation, this.brightness] = rgbToHsv(this.state.red, this.state.green, this.state.blue);
     return this.state;
   }
 
   private async sendColor(): Promise<void> {
     const [red, green, blue] = hsvToRgb(this.hue, this.saturation, this.brightness);
-    await this.transport().setColor(this.capability, { red, green, blue, warmWhite: this.capability === 'rgbw' ? this.brightness * 2.55 : 0 });
+    await this.execute(transport => transport.setColor(this.capability, {
+      red,
+      green,
+      blue,
+      warmWhite: this.capability === 'rgbw' ? this.brightness * 2.55 : 0,
+    }));
+  }
+
+  private async execute<T>(operation: (transport: MagicHomeTransport) => Promise<T>): Promise<T> {
+    if (this.disabledReason) throw new Error(`MagicHome device is unavailable: ${this.disabledReason}`);
+    try {
+      return await operation(this.transport());
+    } catch (error) {
+      this.platform.deviceWentOffline(this.accessory, this.device, error as Error);
+      throw error;
+    }
   }
 }

@@ -12,7 +12,6 @@ export interface SubnetProbeConfig {
 
 export interface DiscoveryConfig {
   enabled: boolean;
-  intervalSeconds: number;
   timeoutMs: number;
   retries: number;
   retryDelayMs: number;

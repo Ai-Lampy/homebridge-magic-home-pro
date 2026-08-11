@@ -23,7 +23,6 @@ export function normalizeConfig(input: unknown): MagicHomeConfig {
   };
   const discovery: DiscoveryConfig = {
     enabled: bool(discoveryInput.enabled, true),
-    intervalSeconds: integer(discoveryInput.intervalSeconds, 300, 0, 86400),
     timeoutMs: integer(discoveryInput.timeoutMs, 3000, 250, 30000),
     retries: integer(discoveryInput.retries, 3, 1, 10),
     retryDelayMs: integer(discoveryInput.retryDelayMs, 250, 0, 10000),
