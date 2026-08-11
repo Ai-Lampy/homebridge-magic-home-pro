@@ -1,0 +1,1 @@
+# homebridge-magic-home-pro
