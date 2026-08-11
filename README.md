@@ -1,1 +1,67 @@
 # homebridge-magic-home-pro
+
+A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi lights and controllers. It communicates only over your LAN: there is no MagicHome login, cloud token, fixed regional hostname, region allowlist, telemetry, or runtime controller-definition download.
+
+> This is an early beta scaffold. Test with your controller before relying on it, and report the sanitized diagnostic result for unknown hardware.
+
+## Requirements
+
+- Homebridge 2
+- A Node.js release supported by Homebridge 2 (`22`, `24`, or `26` at the time of this beta)
+- A controller that exposes the MagicHome LAN protocol on UDP `48899` and/or TCP `5577`
+
+Provision the device onto Wi-Fi in its vendor app first. The plugin does not require an account or a particular cloud region afterward. “Region independent” means the plugin imposes no cloud-region dependency; some firmware may nevertheless disable or alter its LAN interface based on provisioning. Such cloud-only firmware cannot be controlled locally.
+
+## Installation and configuration
+
+Install through Homebridge UI, then add the platform. Defaults work on a flat LAN:
+
+```json
+{
+  "platform": "MagicHomePro",
+  "name": "Magic Home Pro",
+  "discovery": {
+    "enabled": true,
+    "intervalSeconds": 300,
+    "timeoutMs": 3000,
+    "retries": 3,
+    "limitedBroadcast": true,
+    "targets": ["192.168.1.255", "192.168.20.45"],
+    "subnetProbe": { "enabled": false, "cidrs": [], "concurrency": 10 }
+  },
+  "devices": [{ "name": "Kitchen LEDs", "host": "192.168.20.45" }],
+  "logLevel": "info"
+}
+```
+
+Manual IPs and configured targets are attempted even if broadcast discovery fails. A MAC address in a manual entry is recommended because HomeKit accessory UUIDs use normalized MAC addresses whenever available; the last IP is cached but is never the identity of a discovered device. Accessories are retained while offline and never automatically pruned.
+
+## Networks, Docker, and VLANs
+
+Automatic broadcast discovery normally requires Homebridge and the controller on the same LAN/VLAN. Docker normally needs host networking. On routed VLANs, permit UDP `48899` and TCP `5577`, then configure a directed broadcast address or individual device IP. Static DHCP reservations are helpful but not required.
+
+Optional subnet probing is disabled by default. It scans only explicitly configured CIDRs, is concurrency/rate limited, and rejects public ranges unless `allowPublic` is deliberately enabled. Prefer direct IP targets.
+
+## Diagnostics
+
+The custom configuration UI exposes a diagnostic scan that does not register or delete accessories. Logs distinguish interface/bind/send failures, silence after discovery, unreachable TCP endpoints, unsupported responses, unknown capabilities, and previously known offline devices. Set `logLevel` to `trace` for sanitized raw protocol hex (LAN addresses and controller packets only; no credentials or unrelated traffic).
+
+If a controller is silent, verify:
+
+1. Homebridge has an eligible IPv4 interface.
+2. UDP `48899` broadcast/replies and TCP `5577` are allowed.
+3. A direct device IP works across VLANs.
+4. The device firmware actually exposes a LAN endpoint. Selecting “Global” in a vendor app can affect some firmware, but it is not a plugin requirement.
+
+## Supported protocol families
+
+The transport attempts current `81 8A 8B` and legacy `EF 01 77` state queries and detects capability from replies. RGB, RGBW, RGB+CCT, CCT, dimmer, and switch capability classes are represented. Unknown response types remain registered diagnostically rather than crashing Homebridge.
+
+## Development
+
+```sh
+pnpm install
+pnpm run check
+```
+
+Tests use simulated UDP/TCP controllers; real-hardware and multi-region provisioning validation remains necessary before specific models are declared compatible.
