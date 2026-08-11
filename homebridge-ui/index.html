@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Magic Home Pro</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 0; padding: 16px; color: var(--text-color, #222); }
+    textarea { box-sizing: border-box; width: 100%; min-height: 320px; font: 12px ui-monospace, monospace; }
+    button { margin: 12px 8px 12px 0; padding: 8px 14px; }
+    pre { overflow: auto; padding: 12px; background: rgba(127,127,127,.12); white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <p>This plugin is LAN-only. Edit the platform JSON or run a read-only diagnostic scan; scanning never adds or removes accessories.</p>
+  <textarea id="config" aria-label="Platform configuration"></textarea>
+  <div>
+    <button id="save">Save configuration</button>
+    <button id="scan">Run diagnostic scan</button>
+  </div>
+  <pre id="result">Ready.</pre>
+  <script>
+    const editor = document.querySelector('#config');
+    const result = document.querySelector('#result');
+    let allConfig = [];
+
+    function parseConfig() {
+      const value = JSON.parse(editor.value);
+      value.platform = 'MagicHomePro';
+      return value;
+    }
+
+    (async () => {
+      allConfig = await homebridge.getPluginConfig();
+      const config = allConfig[0] || { platform: 'MagicHomePro', name: 'Magic Home Pro' };
+      editor.value = JSON.stringify(config, null, 2);
+    })().catch(error => { result.textContent = error.message; });
+
+    document.querySelector('#save').addEventListener('click', async () => {
+      try {
+        const config = parseConfig();
+        await homebridge.updatePluginConfig([config]);
+        await homebridge.savePluginConfig();
+        homebridge.toast.success('Configuration saved', 'Magic Home Pro');
+      } catch (error) { homebridge.toast.error(error.message, 'Could not save'); }
+    });
+
+    document.querySelector('#scan').addEventListener('click', async () => {
+      try {
+        homebridge.showSpinner();
+        result.textContent = 'Scanning…';
+        const report = await homebridge.request('/diagnostic-scan', { config: parseConfig() });
+        result.textContent = JSON.stringify(report, null, 2);
+      } catch (error) { result.textContent = error.stack || error.message; }
+      finally { homebridge.hideSpinner(); }
+    });
+  </script>
+</body>
+</html>
