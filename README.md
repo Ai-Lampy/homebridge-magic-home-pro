@@ -12,6 +12,15 @@ A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi 
 
 Provision the device onto Wi-Fi in its vendor app first. The plugin does not require an account or a particular cloud region afterward. “Region independent” means the plugin imposes no cloud-region dependency; some firmware may nevertheless disable or alter its LAN interface based on provisioning. Such cloud-only firmware cannot be controlled locally.
 
+### MagicHome app settings
+
+For remote-control use, configure the device in the MagicHome app as follows:
+
+- set **2.4G Remote Control Settings** to **Open all remote control**; and
+- enable **Remote Settings**.
+
+The selected **Cloud Server** location is not relevant to this plugin. Global, European, and other server locations do not need to be changed for discovery or local control. The plugin never signs in to, contacts, or depends on the selected MagicHome cloud server.
+
 ## Apple Home and remote control
 
 Accessories discovered by this plugin are exposed to Apple Home through the normal HomeKit bridge. They can be controlled in the Home app both on the home network and remotely while the user is away.
@@ -35,7 +44,6 @@ Install through Homebridge UI, then add the platform. Defaults work on a flat LA
   "name": "Magic Home Pro",
   "discovery": {
     "enabled": true,
-    "intervalSeconds": 300,
     "timeoutMs": 3000,
     "retries": 3,
     "limitedBroadcast": true,
@@ -48,6 +56,15 @@ Install through Homebridge UI, then add the platform. Defaults work on a flat LA
 ```
 
 Manual IPs and configured targets are attempted even if broadcast discovery fails. A MAC address in a manual entry is recommended because HomeKit accessory UUIDs use normalized MAC addresses whenever available; the last IP is cached but is never the identity of a discovered device. Accessories are retained while offline and never automatically pruned.
+
+### Discovery and offline recovery
+
+New-device discovery runs only when Homebridge or the plugin child bridge starts. The plugin does not perform perpetual background discovery.
+
+- Cached devices are checked during startup. If any are missing, the plugin makes up to five startup scans, 10 seconds apart.
+- A cached device still missing after the fifth scan is disabled and reported as unavailable. Its cached accessory and HomeKit identity are preserved; it is not deleted.
+- If an active device later goes offline during state or control communication, the plugin performs up to five device-specific recovery scans, 10 seconds apart, stopping as soon as that device is found again.
+- Recovery scans never register unrelated new devices. Restart Homebridge or the child bridge to discover newly added controllers.
 
 ## Networks, Docker, and VLANs
 
@@ -64,7 +81,7 @@ If a controller is silent, verify:
 1. Homebridge has an eligible IPv4 interface.
 2. UDP `48899` broadcast/replies and TCP `5577` are allowed.
 3. A direct device IP works across VLANs.
-4. The device firmware actually exposes a LAN endpoint. Selecting “Global” in a vendor app can affect some firmware, but it is not a plugin requirement.
+4. The device firmware actually exposes a LAN endpoint. The configured MagicHome cloud-server location is not relevant and does not need to be changed.
 
 ## Supported protocol families
 
