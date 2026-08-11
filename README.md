@@ -97,3 +97,7 @@ pnpm run check
 ```
 
 Tests use simulated UDP/TCP controllers; real-hardware and multi-region provisioning validation remains necessary before specific models are declared compatible.
+
+## Releases
+
+Every version must have a matching `## x.y.z` section in `CHANGELOG.md`. The npm publication workflow extracts that section, publishes the package, and creates a matching GitHub release tagged `vx.y.z`. Homebridge UI-X displays the GitHub release body under **Release Notes** and the packaged `CHANGELOG.md` under **Full Changelog** when users update the plugin.

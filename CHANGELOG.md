@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.2.1
+## 0.3.0
 
 - Let users add or update controllers found by the diagnostic scan directly from the Homebridge UI.
+- Keep `homebridge` exclusively in development dependencies and declare HAP as the supported transport.
 
 ## 0.2.0
 
