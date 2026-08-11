@@ -1,0 +1,29 @@
+{
+  "bridge": {
+    "name": "Magic Home Pro Smoke Test",
+    "username": "0E:42:38:9A:11:02",
+    "port": 51999,
+    "pin": "031-45-154"
+  },
+  "platforms": [
+    {
+      "platform": "MagicHomePro",
+      "name": "Magic Home Pro Smoke Test",
+      "discovery": {
+        "enabled": true,
+        "timeoutMs": 1000,
+        "retries": 1,
+        "retryDelayMs": 0,
+        "limitedBroadcast": true,
+        "targets": [],
+        "interfaces": [],
+        "subnetProbe": {
+          "enabled": false,
+          "cidrs": []
+        }
+      },
+      "devices": [],
+      "logLevel": "debug"
+    }
+  ]
+}
