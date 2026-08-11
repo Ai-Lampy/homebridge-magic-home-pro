@@ -44,4 +44,31 @@ describe('scan concurrency', () => {
     expect(merged[0]).not.toHaveProperty('colorControl');
     expect(merged[0]).not.toHaveProperty('colorOrder');
   });
+
+  it('does not start offline recovery while startup recovery owns the device', () => {
+    const disable = vi.fn();
+    const recoverDevice = vi.fn();
+    const platform = Object.create(MagicHomePlatform.prototype) as MagicHomePlatform & Record<string, unknown>;
+    Object.assign(platform, {
+      startupInProgress: true,
+      recoveryTasks: new Map(),
+      abortController: new AbortController(),
+      handlers: new Map([['accessory-uuid', { disable }]]),
+      recoverDevice,
+      log: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    });
+    const accessory = {
+      UUID: 'accessory-uuid', displayName: 'LED Neon',
+      context: { stableId: 'mac:B4E842B4022E' },
+    };
+    const device = {
+      host: '192.168.1.42', mac: 'B4E842B4022E', source: 'cache', sources: ['cache'],
+    };
+
+    platform.deviceWentOffline(accessory as never, device, new Error('timed out'));
+
+    expect(disable).toHaveBeenCalledWith('communication failed: timed out');
+    expect(recoverDevice).not.toHaveBeenCalled();
+    expect((platform as unknown as { recoveryTasks: Map<string, unknown> }).recoveryTasks).toHaveLength(0);
+  });
 });

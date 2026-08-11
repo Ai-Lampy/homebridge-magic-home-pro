@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.4
+
+- Coalesce simultaneous HomeKit characteristic reads into one controller state request.
+- Bound characteristic state requests below Homebridge's slow-handler warning threshold while retaining configurable discovery timeouts.
+- Return the standard HomeKit service-communication status for offline controllers instead of leaking transport errors from characteristic handlers.
+- Prevent characteristic failures during startup from launching a second recovery loop alongside startup recovery.
+
 ## 0.5.3
 
 - Clear saved and cached Colour Control and Colour Order overrides when their enable checkboxes are switched off, restoring automatically detected/default controller behaviour after restart.

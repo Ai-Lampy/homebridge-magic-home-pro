@@ -94,6 +94,7 @@ New-device discovery runs only when Homebridge or the plugin child bridge starts
 - Cached devices are checked during startup. If any are missing, the plugin makes up to five startup scans, 10 seconds apart.
 - A cached device still missing after the fifth scan is disabled and reported as unavailable. Its cached accessory and HomeKit identity are preserved; it is not deleted.
 - If an active device later goes offline during state or control communication, the plugin performs up to five device-specific recovery scans, 10 seconds apart, stopping as soon as that device is found again.
+- Simultaneous Apple Home characteristic reads share one bounded controller state request. During startup, the startup scan sequence remains the sole recovery owner so duplicate recovery loops are not created.
 - Recovery scans never register unrelated new devices. Restart Homebridge or the child bridge to discover newly added controllers.
 
 ## Networks, Docker, and VLANs

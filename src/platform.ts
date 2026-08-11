@@ -24,6 +24,7 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
   private readonly recoveryTasks = new Map<string, Promise<void>>();
   private scanPromise: Promise<Set<string>> | undefined;
   private readonly abortController = new AbortController();
+  private startupInProgress = true;
 
   constructor(readonly log: Logger, rawConfig: PlatformConfig, readonly api: API) {
     this.Service = api.hap.Service;
@@ -47,34 +48,44 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
     this.handlers.set(accessory.UUID, new MagicHomeAccessory(this, cachedAccessory, this.deviceFromContext(context)));
   }
 
-  transportOptions(): TransportOptions {
+  transportOptions(maxTimeoutMs?: number): TransportOptions {
     return {
-      timeoutMs: this.config.discovery.timeoutMs,
+      timeoutMs: maxTimeoutMs === undefined
+        ? this.config.discovery.timeoutMs
+        : Math.min(this.config.discovery.timeoutMs, maxTimeoutMs),
       ...(this.config.logLevel === 'trace' ? { trace: (message: string) => this.log.debug(message) } : {}),
     };
   }
 
+  serviceCommunicationError(): Error {
+    return new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+  }
+
   private async start(): Promise<void> {
-    this.removeExcludedCachedAccessories();
-    const pending = new Set(this.cached.keys());
-    const result = await retryWithDelay(
-      DEVICE_SCAN_ATTEMPTS,
-      DEVICE_RESCAN_DELAY_MS,
-      async attempt => {
-        if (attempt > 1) {
-          this.log.info(`Startup recovery scan ${attempt}/${DEVICE_SCAN_ATTEMPTS} for ${pending.size} missing cached device(s)`);
+    try {
+      this.removeExcludedCachedAccessories();
+      const pending = new Set(this.cached.keys());
+      const result = await retryWithDelay(
+        DEVICE_SCAN_ATTEMPTS,
+        DEVICE_RESCAN_DELAY_MS,
+        async attempt => {
+          if (attempt > 1) {
+            this.log.info(`Startup recovery scan ${attempt}/${DEVICE_SCAN_ATTEMPTS} for ${pending.size} missing cached device(s)`);
+          }
+          const found = await this.scan(true);
+          for (const stableId of found) pending.delete(stableId);
+          return found;
+        },
+        () => pending.size === 0,
+        this.abortController.signal,
+      );
+      if (!result.succeeded && !this.abortController.signal.aborted) {
+        for (const stableId of pending) {
+          this.disableCachedDevice(stableId, `not found after ${DEVICE_SCAN_ATTEMPTS} startup scans`);
         }
-        const found = await this.scan(true);
-        for (const stableId of found) pending.delete(stableId);
-        return found;
-      },
-      () => pending.size === 0,
-      this.abortController.signal,
-    );
-    if (!result.succeeded && !this.abortController.signal.aborted) {
-      for (const stableId of pending) {
-        this.disableCachedDevice(stableId, `not found after ${DEVICE_SCAN_ATTEMPTS} startup scans`);
       }
+    } finally {
+      this.startupInProgress = false;
     }
   }
 
@@ -238,6 +249,10 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
     const stableId = accessory.context.stableId;
     if (this.recoveryTasks.has(stableId) || this.abortController.signal.aborted) return;
     this.handlers.get(accessory.UUID)?.disable(`communication failed: ${error.message}`);
+    if (this.startupInProgress) {
+      this.log.debug(`${accessory.displayName} communication failed while startup recovery is active; using the existing startup scan sequence`);
+      return;
+    }
     this.log.warn(`${accessory.displayName} went offline; starting ${DEVICE_SCAN_ATTEMPTS} recovery scans 10 seconds apart`);
     const task = this.recoverDevice(stableId, device).finally(() => this.recoveryTasks.delete(stableId));
     this.recoveryTasks.set(stableId, task);

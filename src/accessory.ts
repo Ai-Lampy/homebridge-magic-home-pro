@@ -1,5 +1,6 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 import type { MagicHomePlatform } from './platform.js';
+import { CHARACTERISTIC_TIMEOUT_MS } from './settings.js';
 import { MagicHomeTransport } from './transport.js';
 import type { CachedDeviceContext, Capability, DeviceState, DiscoveredDevice } from './types.js';
 
@@ -37,6 +38,7 @@ export class MagicHomeAccessory {
   private whiteMode = false;
   private capability: Capability;
   private disabledReason: string | undefined;
+  private refreshPromise: Promise<DeviceState> | undefined;
 
   constructor(
     private readonly platform: MagicHomePlatform,
@@ -152,15 +154,24 @@ export class MagicHomeAccessory {
 
   private transport(): MagicHomeTransport {
     return new MagicHomeTransport(this.device.host, {
-      ...this.platform.transportOptions(),
+      ...this.platform.transportOptions(CHARACTERISTIC_TIMEOUT_MS),
       ...(this.device.colorOrder ? { colorOrder: this.device.colorOrder } : {}),
     });
   }
 
-  private async refresh(): Promise<DeviceState> {
-    this.state = await this.execute(transport => transport.queryState());
-    this.applyState(this.state);
-    return this.state;
+  private refresh(): Promise<DeviceState> {
+    if (this.refreshPromise) return this.refreshPromise;
+    const pending = this.execute(transport => transport.queryState()).then(state => {
+      this.state = state;
+      this.applyState(state);
+      return state;
+    });
+    this.refreshPromise = pending;
+    const clear = (): void => {
+      if (this.refreshPromise === pending) this.refreshPromise = undefined;
+    };
+    void pending.then(clear, clear);
+    return pending;
   }
 
   private applyState(state: DeviceState): void {
@@ -201,12 +212,12 @@ export class MagicHomeAccessory {
   }
 
   private async execute<T>(operation: (transport: MagicHomeTransport) => Promise<T>): Promise<T> {
-    if (this.disabledReason) throw new Error(`MagicHome device is unavailable: ${this.disabledReason}`);
+    if (this.disabledReason) throw this.platform.serviceCommunicationError();
     try {
       return await operation(this.transport());
     } catch (error) {
       this.platform.deviceWentOffline(this.accessory, this.device, error as Error);
-      throw error;
+      throw this.platform.serviceCommunicationError();
     }
   }
 }

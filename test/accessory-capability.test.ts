@@ -35,6 +35,10 @@ const Characteristic = {
   Brightness: 'brightness', Hue: 'hue', Saturation: 'saturation', ColorTemperature: 'temperature',
 };
 
+class FakeHapStatusError extends Error {
+  constructor(readonly hapStatus: number) { super(`HAP status ${hapStatus}`); }
+}
+
 function state(
   capability: Capability,
   values: Partial<Pick<DeviceState, 'red' | 'green' | 'blue' | 'warmWhite' | 'coolWhite' | 'brightness'>> = {},
@@ -59,8 +63,9 @@ function harness(capability: Capability, initialState = state(capability)) {
   const platform = {
     Service,
     Characteristic,
-    transportOptions: () => ({}),
+    transportOptions: vi.fn((maxTimeoutMs?: number) => ({ ...(maxTimeoutMs ? { timeoutMs: maxTimeoutMs } : {}) })),
     deviceWentOffline: vi.fn(),
+    serviceCommunicationError: () => new FakeHapStatusError(-70402),
   } as unknown as MagicHomePlatform;
   const context: CachedDeviceContext = {
     schemaVersion: 1,
@@ -89,7 +94,7 @@ function harness(capability: Capability, initialState = state(capability)) {
     source: 'discovery',
     sources: ['discovery'],
   };
-  return { accessory, device, handler: new MagicHomeAccessory(platform, accessory, device, initialState), services };
+  return { accessory, device, handler: new MagicHomeAccessory(platform, accessory, device, initialState), platform, services };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -173,5 +178,46 @@ describe('accessory capability behaviour', () => {
     expect(lightbulb.testCharacteristic(Characteristic.Brightness)).toBe(true);
     expect(lightbulb.testCharacteristic(Characteristic.Hue)).toBe(false);
     expect(lightbulb.testCharacteristic(Characteristic.Saturation)).toBe(false);
+  });
+
+  it('coalesces simultaneous characteristic reads into one bounded state request', async () => {
+    let resolveState!: (value: DeviceState) => void;
+    const queryState = vi.spyOn(MagicHomeTransport.prototype, 'queryState').mockImplementation(() =>
+      new Promise(resolve => { resolveState = resolve; }));
+    const refreshed = state('rgb', { brightness: 42, red: 0, green: 100, blue: 0 });
+    const { platform, services } = harness('rgb');
+    const lightbulb = services.get(Service.Lightbulb)!;
+
+    const reads = [
+      lightbulb.getCharacteristic(Characteristic.On).getter?.(),
+      lightbulb.getCharacteristic(Characteristic.Brightness).getter?.(),
+      lightbulb.getCharacteristic(Characteristic.Hue).getter?.(),
+      lightbulb.getCharacteristic(Characteristic.Saturation).getter?.(),
+    ];
+    await Promise.resolve();
+    expect(queryState).toHaveBeenCalledTimes(1);
+    expect(platform.transportOptions).toHaveBeenCalledWith(1_000);
+
+    resolveState(refreshed);
+    await expect(Promise.all(reads)).resolves.toEqual([false, 42, 120, 100]);
+  });
+
+  it('reports one offline event and a HomeKit communication status for concurrent failed reads', async () => {
+    vi.spyOn(MagicHomeTransport.prototype, 'queryState').mockRejectedValue(new Error('controller unavailable'));
+    const { platform, services } = harness('rgb');
+    const lightbulb = services.get(Service.Lightbulb)!;
+    const reads = [
+      lightbulb.getCharacteristic(Characteristic.On).getter?.(),
+      lightbulb.getCharacteristic(Characteristic.Brightness).getter?.(),
+      lightbulb.getCharacteristic(Characteristic.Hue).getter?.(),
+      lightbulb.getCharacteristic(Characteristic.Saturation).getter?.(),
+    ];
+
+    const results = await Promise.allSettled(reads);
+    expect(results).toHaveLength(4);
+    for (const result of results) {
+      expect(result).toMatchObject({ status: 'rejected', reason: { hapStatus: -70402 } });
+    }
+    expect(platform.deviceWentOffline).toHaveBeenCalledTimes(1);
   });
 });
