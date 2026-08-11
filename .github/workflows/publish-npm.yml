@@ -2,15 +2,10 @@ name: Publish to npm
 
 on:
   workflow_dispatch:
-    inputs:
-      npm_tag:
-        description: npm distribution tag
-        required: true
-        default: beta
-        type: choice
-        options:
-          - beta
-          - latest
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -19,60 +14,90 @@ permissions:
 jobs:
   test-node-support:
     name: Test supported Node.js versions
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/test-node.yml
 
   publish:
-    name: Build, test and publish
+    name: Publish package
+    if: github.ref == 'refs/heads/main'
     needs: test-node-support
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
           version: 11.16.0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org
-          cache: pnpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Prepare release notes
-        id: release
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build and test
         run: |
-          release_version="$(node -p "require('./package.json').version")"
-          echo "version=$release_version" >> "$GITHUB_OUTPUT"
-          node scripts/extract-release-notes.mjs "$release_version" > release-notes.md
+          pnpm run build
+          pnpm test
+
+      - name: Inspect package
+        run: npm pack --dry-run --ignore-scripts
+
+      - name: Read package metadata
+        id: package
+        shell: bash
+        run: |
+          echo "name=$(node -p "require('./package.json').name")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release notes
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        shell: bash
+        run: |
+          node scripts/extract-release-notes.mjs "$PACKAGE_VERSION" > release-notes.md
+          printf '\nPublished package: https://www.npmjs.com/package/%s/v/%s\n' \
+            "$PACKAGE_NAME" "$PACKAGE_VERSION" >> release-notes.md
+
+      - name: Check whether version is already published
+        id: registry
+        shell: bash
+        run: |
+          if npm view "${{ steps.package.outputs.name }}@${{ steps.package.outputs.version }}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Publish package
-        run: npm publish --access public --tag "${{ inputs.npm_tag }}" --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: steps.registry.outputs.exists != 'true'
+        run: npm publish --provenance --access public
 
-      - name: Create GitHub prerelease
-        if: inputs.npm_tag != 'latest'
-        run: >-
-          gh release create "v${{ steps.release.outputs.version }}"
-          --title "v${{ steps.release.outputs.version }}"
-          --notes-file release-notes.md
-          --target "$GITHUB_SHA"
-          --prerelease
+      - name: Create GitHub release with notes
         env:
           GH_TOKEN: ${{ github.token }}
-
-      - name: Create GitHub release
-        if: inputs.npm_tag == 'latest'
-        run: >-
-          gh release create "v${{ steps.release.outputs.version }}"
-          --title "v${{ steps.release.outputs.version }}"
-          --notes-file release-notes.md
-          --target "$GITHUB_SHA"
-        env:
-          GH_TOKEN: ${{ github.token }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        shell: bash
+        run: |
+          tag="v${PACKAGE_VERSION}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" \
+              --title "Magic Home Pro ${PACKAGE_VERSION}" \
+              --notes-file release-notes.md
+          else
+            gh release create "$tag" \
+              --target "$GITHUB_SHA" \
+              --title "Magic Home Pro ${PACKAGE_VERSION}" \
+              --notes-file release-notes.md
+          fi
