@@ -3,7 +3,7 @@ name: Publish to npm
 on:
   workflow_dispatch:
     inputs:
-      npm-tag:
+      npm_tag:
         description: npm distribution tag
         required: true
         default: beta
@@ -13,12 +13,17 @@ on:
           - latest
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
+  test-node-support:
+    name: Test supported Node.js versions
+    uses: ./.github/workflows/test-node.yml
+
   publish:
     name: Build, test and publish
+    needs: test-node-support
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -39,10 +44,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate package
-        run: pnpm run check
+      - name: Prepare release notes
+        id: release
+        run: |
+          release_version="$(node -p "require('./package.json').version")"
+          echo "version=$release_version" >> "$GITHUB_OUTPUT"
+          node scripts/extract-release-notes.mjs "$release_version" > release-notes.md
 
       - name: Publish package
-        run: npm publish --access public --tag "${{ inputs.npm-tag }}" --provenance
+        run: npm publish --access public --tag "${{ inputs.npm_tag }}" --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub prerelease
+        if: inputs.npm_tag != 'latest'
+        run: >-
+          gh release create "v${{ steps.release.outputs.version }}"
+          --title "v${{ steps.release.outputs.version }}"
+          --notes-file release-notes.md
+          --target "$GITHUB_SHA"
+          --prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create GitHub release
+        if: inputs.npm_tag == 'latest'
+        run: >-
+          gh release create "v${{ steps.release.outputs.version }}"
+          --title "v${{ steps.release.outputs.version }}"
+          --notes-file release-notes.md
+          --target "$GITHUB_SHA"
+        env:
+          GH_TOKEN: ${{ github.token }}
