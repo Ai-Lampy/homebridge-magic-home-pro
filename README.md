@@ -57,10 +57,10 @@ Manual IPs and configured targets are attempted even if broadcast discovery fail
 
 ### Plugin configuration UI
 
-The custom Homebridge UI has two tabs and does not expose raw JSON:
+The custom Homebridge UI has two accessible tabs and does not expose raw JSON:
 
 - **Scan for Devices** discovers controllers and shows their IP address, MAC address, model, detected control type, and TCP availability. A device is added only after the user reviews and confirms its settings.
-- **Devices** lists saved controllers, keeps their detected control type visible, and allows their settings to be edited or removed. Device removal uses a second confirmation step to prevent accidental deletion.
+- **Devices** shows the saved-device count, keeps each detected control type visible, and presents a compact summary for every controller. Select **Edit Details** to open a device's settings. Device removal uses a second confirmation step to prevent accidental deletion.
 
 Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, an optional colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and optional physical colour-output remapping. Automatic colour control uses the detected controller type, so a detected dimmer is exposed in Apple Home with power and brightness controls rather than RGB controls unless the user deliberately overrides it.
 

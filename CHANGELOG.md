@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Refresh the Plugin Config UI with a clearer header, accessible tabs, panel layout, scan status, device counts, capability badges, responsive forms, and improved empty states.
+- Keep configured device editors collapsed until Edit Details is selected, reducing clutter without removing any controls.
+
 ## 0.4.4
 
 - Avoid adding the unsupported Configured Name characteristic to Lightbulb services, preventing the corresponding Homebridge warning.
@@ -34,6 +39,10 @@
 - Let users add or update controllers found by the diagnostic scan directly from the Homebridge UI.
 - Keep `homebridge` exclusively in development dependencies and declare HAP as the supported transport.
 - Test every GitHub update on Node.js 22, 24, and 26, and require all three checks before npm publication.
+
+## 0.2.1
+
+- Let users add or update controllers found by the diagnostic scan directly from the Homebridge UI.
 
 ## 0.2.0
 

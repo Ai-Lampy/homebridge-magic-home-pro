@@ -1,34 +1,82 @@
 <style>
-  .plugin-tabs { display: flex; gap: 8px; border-bottom: 1px solid rgba(127,127,127,.35); margin-bottom: 18px; }
-  .plugin-tabs button { border: 1px solid rgba(127,127,127,.35); border-bottom: 3px solid transparent; border-radius: 6px 6px 0 0; background: #fff; color: #212529; padding: 10px 14px; }
-  .plugin-tabs button.active { border-bottom-color: var(--primary, #491f59); font-weight: 600; }
-  .device-list { display: grid; gap: 16px; margin-top: 16px; }
-  .device-card { border: 1px solid rgba(127,127,127,.35); border-radius: 8px; padding: 16px; }
-  .device-details { color: #6c757d; margin: 6px 0 14px; overflow-wrap: anywhere; }
-  .device-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  :root { --mhp-accent: var(--primary, #491f59); --mhp-border: rgba(91, 78, 96, .2); --mhp-muted: #667085; --mhp-soft: #f7f5f8; }
+  * { box-sizing: border-box; }
+  .plugin-shell { display: grid; gap: 16px; color: #212529; }
+  .plugin-intro { padding: 18px 20px; border-radius: 12px; background: linear-gradient(135deg, #491f59, #713582); color: #fff; }
+  .plugin-intro h2 { margin: 0 0 6px; font-size: 21px; font-weight: 650; }
+  .plugin-intro p { margin: 0; max-width: 720px; color: rgba(255,255,255,.86); }
+  .plugin-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .plugin-tabs button { min-height: 48px; border: 1px solid var(--mhp-border); border-radius: 9px; background: #fff; color: #344054; padding: 11px 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+  .plugin-tabs button.active { border: 2px solid var(--mhp-accent); color: var(--mhp-accent); font-weight: 650; box-shadow: 0 3px 10px rgba(73,31,89,.12); }
+  .plugin-panel { border: 1px solid var(--mhp-border); border-radius: 12px; background: #fff; padding: 20px; box-shadow: 0 2px 8px rgba(16,24,40,.04); }
+  .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  .panel-heading h3 { margin: 0 0 5px; font-size: 18px; }
+  .panel-heading p { margin: 0; color: var(--mhp-muted); }
+  .status-line { display: flex; align-items: center; gap: 8px; min-height: 24px; margin: 14px 0 0; color: var(--mhp-muted); }
+  .status-line::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #98a2b3; flex: 0 0 auto; }
+  .status-line.success::before { background: #198754; }
+  .status-line.error::before { background: #dc3545; }
+  .device-list { display: grid; gap: 14px; margin-top: 16px; }
+  .device-card { border: 1px solid var(--mhp-border); border-radius: 11px; background: #fff; padding: 17px; box-shadow: 0 1px 3px rgba(16,24,40,.05); }
+  .device-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .device-card-header h5 { margin: 2px 0 0; font-size: 17px; }
+  .header-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .device-label { color: var(--mhp-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .capability-badge { display: inline-flex; align-items: center; border: 1px solid rgba(73,31,89,.2); border-radius: 999px; background: #f5eff7; color: var(--mhp-accent); padding: 4px 9px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .device-details { border-radius: 7px; background: var(--mhp-soft); color: var(--mhp-muted); margin: 12px 0 0; padding: 9px 11px; font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+  .device-card > .btn { margin-top: 12px; }
+  .device-editor { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--mhp-border); }
+  .device-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .device-form .full-width { grid-column: 1 / -1; }
-  .field-help { display: block; color: #6c757d; font-size: 12px; margin-top: 4px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .form-field > .form-label { display: block; margin-bottom: 0; color: #344054; font-size: 13px; font-weight: 600; }
+  .field-help { display: block; color: var(--mhp-muted); font-size: 12px; line-height: 1.4; margin-top: 5px; }
+  .checkbox-field { display: flex; flex-direction: column; justify-content: center; min-height: 64px; border: 1px solid var(--mhp-border); border-radius: 8px; background: var(--mhp-soft); padding: 10px 12px; }
+  .checkbox-field .form-label { display: flex; align-items: center; gap: 8px; margin: 0; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 18px; }
+  .empty-state { margin: 16px 0 0; border: 1px dashed rgba(102,112,133,.45); border-radius: 10px; color: var(--mhp-muted); background: var(--mhp-soft); padding: 22px; text-align: center; }
+  .room-note { margin: 0; border: 0; border-radius: 8px; background: #eef6ff; color: #344054; }
   [hidden] { display: none !important; }
-  @media (max-width: 640px) { .device-form { grid-template-columns: 1fr; } .device-form .full-width { grid-column: auto; } }
+  @media (max-width: 640px) {
+    .plugin-intro, .plugin-panel { padding: 16px; }
+    .panel-heading, .device-card-header { flex-direction: column; }
+    .header-actions { width: 100%; justify-content: flex-start; }
+    .device-form { grid-template-columns: 1fr; }
+    .device-form .full-width { grid-column: auto; }
+    .panel-heading .btn, .device-card-header .btn { width: 100%; }
+  }
 </style>
 
-<div class="container-fluid px-0">
-  <nav class="plugin-tabs" aria-label="Plugin settings">
-    <button id="tab-scan" class="active" type="button">Scan for Devices</button>
-    <button id="tab-devices" type="button">Devices</button>
+<div class="container-fluid px-0 plugin-shell">
+  <header class="plugin-intro">
+    <h2>Magic Home Pro</h2>
+    <p>Find and configure compatible MagicHome controllers directly on your local network.</p>
+  </header>
+
+  <nav class="plugin-tabs" role="tablist" aria-label="Plugin settings">
+    <button id="tab-scan" class="active" type="button" role="tab" aria-selected="true" aria-controls="panel-scan">Scan for Devices</button>
+    <button id="tab-devices" type="button" role="tab" aria-selected="false" aria-controls="panel-devices">Devices</button>
   </nav>
 
-  <section id="panel-scan">
-    <p>Find compatible MagicHome controllers on the local network. Scanning does not add anything until you confirm a device.</p>
-    <button id="scan" class="btn btn-primary" type="button">Scan for Devices</button>
-    <p id="scan-status" class="mt-3" aria-live="polite">Ready to scan.</p>
+  <section id="panel-scan" class="plugin-panel" role="tabpanel" aria-labelledby="tab-scan">
+    <div class="panel-heading">
+      <div>
+        <h3>Discover controllers</h3>
+        <p>Scanning is read-only. Review each controller before adding it.</p>
+      </div>
+      <button id="scan" class="btn btn-primary" type="button">Scan Now</button>
+    </div>
+    <p id="scan-status" class="status-line" aria-live="polite">Ready to scan.</p>
     <div id="scan-results" class="device-list" aria-live="polite"></div>
   </section>
 
-  <section id="panel-devices" hidden>
-    <p>View or edit devices already saved in this plugin configuration.</p>
-    <div class="alert alert-info">
+  <section id="panel-devices" class="plugin-panel" role="tabpanel" aria-labelledby="tab-devices" hidden>
+    <div class="panel-heading">
+      <div>
+        <h3>Configured devices</h3>
+        <p>Review saved controllers and open only the device you want to change.</p>
+      </div>
+    </div>
+    <div class="alert alert-info room-note">
       The Location field is stored as a room label. Apple Home controls its own room membership, so select the final room in the Apple Home app.
     </div>
     <div id="configured-devices" class="device-list" aria-live="polite"></div>
@@ -61,6 +109,7 @@
   const scanTab = document.querySelector('#tab-scan');
   const devicesTab = document.querySelector('#tab-devices');
   const scanStatus = document.querySelector('#scan-status');
+  const scanButton = document.querySelector('#scan');
   const scanResults = document.querySelector('#scan-results');
   const configuredDevices = document.querySelector('#configured-devices');
 
@@ -97,16 +146,21 @@
     devicesPanel.hidden = showScan;
     scanTab.classList.toggle('active', showScan);
     devicesTab.classList.toggle('active', !showScan);
+    scanTab.setAttribute('aria-selected', String(showScan));
+    devicesTab.setAttribute('aria-selected', String(!showScan));
     if (!showScan) renderConfiguredDevices();
   }
 
   function field(labelText, input, helpText, fullWidth = false) {
     const wrapper = document.createElement('div');
-    if (fullWidth) wrapper.className = 'full-width';
+    wrapper.className = `form-field${fullWidth ? ' full-width' : ''}${input.type === 'checkbox' ? ' checkbox-field' : ''}`;
     const label = document.createElement('label');
     label.className = 'form-label';
-    label.textContent = labelText;
-    label.append(input);
+    if (input.type === 'checkbox') label.append(input, document.createTextNode(labelText));
+    else {
+      label.textContent = labelText;
+      label.append(input);
+    }
     wrapper.append(label);
     if (helpText) {
       const help = document.createElement('small');
@@ -119,7 +173,7 @@
 
   function input(value = '', type = 'text') {
     const element = document.createElement('input');
-    element.className = type === 'checkbox' ? 'form-check-input ms-2' : 'form-control mt-1';
+    element.className = type === 'checkbox' ? 'form-check-input' : 'form-control mt-1';
     element.type = type;
     if (type === 'checkbox') element.checked = Boolean(value);
     else element.value = value;
@@ -154,8 +208,15 @@
   function deviceEditor(device, index, detected) {
     const card = document.createElement('article');
     card.className = 'device-card';
+    const cardHeader = document.createElement('div');
+    cardHeader.className = 'device-card-header';
+    const titleBlock = document.createElement('div');
+    const label = document.createElement('div');
+    label.className = 'device-label';
+    label.textContent = index === undefined ? 'Discovered controller' : 'Configured device';
     const heading = document.createElement('h5');
     heading.textContent = index === undefined ? defaultName(device) : device.name || device.host;
+    titleBlock.append(label, heading);
     const details = document.createElement('p');
     details.className = 'device-details';
     const recentDetection = latestReport.find(item => sameDevice(item, device));
@@ -171,7 +232,17 @@
         : undefined,
     ].filter(Boolean);
     details.textContent = detailParts.join(' · ');
+    const headerActions = document.createElement('div');
+    headerActions.className = 'header-actions';
+    const capabilityBadge = document.createElement('span');
+    capabilityBadge.className = 'capability-badge';
+    capabilityBadge.textContent = detectedCapability ? detectedCapability.toUpperCase() : 'Not detected';
+    headerActions.append(capabilityBadge);
+    cardHeader.append(titleBlock, headerActions);
 
+    const editor = document.createElement('div');
+    editor.className = 'device-editor';
+    editor.hidden = index !== undefined;
     const form = document.createElement('div');
     form.className = 'device-form';
     const name = input(device.name || defaultName(device));
@@ -290,7 +361,22 @@
       actions.append(remove, cancelRemove);
     }
 
-    card.append(heading, details, form, actions);
+    if (index !== undefined) {
+      const toggleEditor = document.createElement('button');
+      toggleEditor.className = 'btn btn-sm btn-outline-secondary';
+      toggleEditor.type = 'button';
+      toggleEditor.textContent = 'Edit Details';
+      toggleEditor.setAttribute('aria-expanded', 'false');
+      toggleEditor.addEventListener('click', () => {
+        editor.hidden = !editor.hidden;
+        toggleEditor.textContent = editor.hidden ? 'Edit Details' : 'Close Details';
+        toggleEditor.setAttribute('aria-expanded', String(!editor.hidden));
+      });
+      headerActions.append(toggleEditor);
+    }
+
+    editor.append(form, actions);
+    card.append(cardHeader, details, editor);
     return card;
   }
 
@@ -298,6 +384,7 @@
     scanResults.replaceChildren();
     if (!Array.isArray(report) || report.length === 0) {
       const empty = document.createElement('p');
+      empty.className = 'empty-state';
       empty.textContent = 'No compatible MagicHome controllers were found.';
       scanResults.append(empty);
       return;
@@ -307,8 +394,19 @@
       if (existingIndex >= 0) {
         const card = document.createElement('article');
         card.className = 'device-card';
+        const cardHeader = document.createElement('div');
+        cardHeader.className = 'device-card-header';
+        const titleBlock = document.createElement('div');
+        const label = document.createElement('div');
+        label.className = 'device-label';
+        label.textContent = 'Configured device';
         const heading = document.createElement('h5');
         heading.textContent = pluginConfig.devices[existingIndex].name || found.model || found.host;
+        titleBlock.append(label, heading);
+        const badge = document.createElement('span');
+        badge.className = 'capability-badge';
+        badge.textContent = (found.capability || 'unknown').toUpperCase();
+        cardHeader.append(titleBlock, badge);
         const details = document.createElement('p');
         details.className = 'device-details';
         details.textContent = `${found.host}${found.mac ? ` · ${normalizeMac(found.mac)}` : ''} · ${found.capability || 'unknown'} · Already configured`;
@@ -317,7 +415,7 @@
         edit.type = 'button';
         edit.textContent = 'Edit in Devices';
         edit.addEventListener('click', () => switchTab('devices'));
-        card.append(heading, details, edit);
+        card.append(cardHeader, details, edit);
         scanResults.append(card);
       } else {
         scanResults.append(deviceEditor({ ...found, name: defaultName(found) }, undefined, found));
@@ -327,8 +425,10 @@
 
   function renderConfiguredDevices() {
     configuredDevices.replaceChildren();
+    devicesTab.textContent = `Devices (${pluginConfig.devices.length})`;
     if (!pluginConfig.devices.length) {
       const empty = document.createElement('p');
+      empty.className = 'empty-state';
       empty.textContent = 'No devices have been added. Use Scan for Devices to find one.';
       configuredDevices.append(empty);
       return;
@@ -338,17 +438,24 @@
 
   scanTab.addEventListener('click', () => switchTab('scan'));
   devicesTab.addEventListener('click', () => switchTab('devices'));
-  document.querySelector('#scan').addEventListener('click', async () => {
+  scanButton.addEventListener('click', async () => {
     try {
       homebridge.showSpinner();
+      scanButton.disabled = true;
+      scanButton.textContent = 'Scanning…';
+      scanStatus.classList.remove('success', 'error');
       scanStatus.textContent = 'Scanning the local network…';
       scanResults.replaceChildren();
       latestReport = await homebridge.request('/diagnostic-scan', { config: pluginConfig });
       scanStatus.textContent = `Scan complete: ${latestReport.length} controller${latestReport.length === 1 ? '' : 's'} found.`;
+      scanStatus.classList.add('success');
       renderScanResults(latestReport);
     } catch (error) {
       scanStatus.textContent = `Scan failed: ${error.message}`;
+      scanStatus.classList.add('error');
     } finally {
+      scanButton.disabled = false;
+      scanButton.textContent = 'Scan Now';
       homebridge.hideSpinner();
     }
   });
@@ -363,5 +470,8 @@
     pluginConfig.devices = Array.isArray(pluginConfig.devices) ? pluginConfig.devices : [];
     pluginConfig.excludedDevices = Array.isArray(pluginConfig.excludedDevices) ? pluginConfig.excludedDevices : [];
     renderConfiguredDevices();
-  })().catch(error => { scanStatus.textContent = `Could not load configuration: ${error.message}`; });
+  })().catch(error => {
+    scanStatus.textContent = `Could not load configuration: ${error.message}`;
+    scanStatus.classList.add('error');
+  });
 </script>

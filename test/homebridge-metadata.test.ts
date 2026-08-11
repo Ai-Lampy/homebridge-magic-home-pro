@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.4.4',
+      version: '0.5.0',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -54,6 +54,10 @@ describe('Homebridge plugin metadata', () => {
     expect(ui).toContain('Detected control:');
     expect(ui).toContain('homebridge.getCachedAccessories()');
     expect(ui).toContain('background: #fff');
+    expect(ui).toContain('Configured devices');
+    expect(ui).toContain('Edit Details');
+    expect(ui).toContain('role="tablist"');
+    expect(ui).toContain('aria-selected');
     for (const field of ['Device Name', 'Location / Room label', 'Device Type', 'CCT Control', 'Colour Control', 'Colour Order']) {
       expect(ui).toContain(field);
     }
