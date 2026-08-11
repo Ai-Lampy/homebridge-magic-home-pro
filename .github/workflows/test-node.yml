@@ -39,3 +39,6 @@ jobs:
 
       - name: Build, lint and test
         run: pnpm run check
+
+      - name: Inspect installable package
+        run: npm pack --dry-run --ignore-scripts
