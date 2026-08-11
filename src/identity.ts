@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { isIPv4, normalizeMac } from './network.js';
 import { normalizeColorOrder } from './capability.js';
 import type { CachedDeviceContext, ColorControlProfile, DeviceType, DiscoveredDevice } from './types.js';
@@ -6,12 +6,9 @@ import type { CachedDeviceContext, ColorControlProfile, DeviceType, DiscoveredDe
 export function stableDeviceId(device: Pick<DiscoveredDevice, 'mac' | 'name' | 'model' | 'host'>): string {
   const mac = normalizeMac(device.mac);
   if (mac) return `mac:${mac}`;
-  // Do not turn a DHCP address into HomeKit identity. Named manual devices get a stable
-  // configuration-derived fallback; otherwise a generated ID is persisted in cache.
-  const label = `${device.name ?? ''}|${device.model ?? ''}`.toLowerCase();
-  if (!label.replace('|', '')) return `generated:${randomUUID()}`;
-  const seed = label;
-  return `manual:${createHash('sha256').update(seed).digest('hex').slice(0, 24)}`;
+  // Do not turn a DHCP address, display name, or model into HomeKit identity. A unique
+  // generated ID is persisted in the accessory context and reused on future starts.
+  return `generated:${randomUUID()}`;
 }
 
 export function readCachedContext(value: unknown): CachedDeviceContext | undefined {

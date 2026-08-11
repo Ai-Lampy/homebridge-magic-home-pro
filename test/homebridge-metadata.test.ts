@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.5.1',
+      version: '0.5.2',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -20,6 +20,7 @@ describe('Homebridge plugin metadata', () => {
       if (Array.isArray(declaration)) expect(declaration).not.toContain('homebridge');
       else expect(declaration ?? {}).not.toHaveProperty('homebridge');
     }
+    expect(fs.readFileSync('LICENSE', 'utf8')).toContain('IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE');
   });
 
   it('uses a strict object schema with the expected platform identity', () => {
@@ -52,6 +53,9 @@ describe('Homebridge plugin metadata', () => {
     expect(ui).not.toContain('window.confirm');
     expect(ui).toContain('Enable Colour Control');
     expect(ui).toContain('Enable Colour Order');
+    expect(ui).toContain('colorControlField.hidden = !colorControlEnabled.checked');
+    expect(ui).toContain('colorOrderField.hidden = !colorOrderEnabled.checked');
+    expect(ui).toContain("throw new Error('Enter a valid IPv4 address.')");
     expect(ui).toContain('mac.readOnly = true');
     expect(ui).toContain('Detected control:');
     expect(ui).toContain('homebridge.getCachedAccessories()');
@@ -89,5 +93,6 @@ describe('Homebridge plugin metadata', () => {
     for (const version of ['22', '24', '26']) expect(workflow).toContain(`- ${version}`);
     const publishWorkflow = fs.readFileSync('.github/workflows/publish-npm.yml', 'utf8');
     expect(publishWorkflow).toContain('needs: test-node-support');
+    expect(workflow).toContain('npm pack --dry-run --ignore-scripts');
   });
 });

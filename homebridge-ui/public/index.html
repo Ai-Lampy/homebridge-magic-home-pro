@@ -118,6 +118,11 @@
     return typeof value === 'string' ? value.replace(/[^a-f0-9]/gi, '').toUpperCase() : '';
   }
 
+  function isIPv4(value) {
+    const parts = String(value || '').trim().split('.');
+    return parts.length === 4 && parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255);
+  }
+
   function normalizeColorOrder(value) {
     const order = String(value || '').toUpperCase().replace(/[^RGBWC]/g, '');
     return order.length >= 1 && order.length <= 5 && new Set(order).size === order.length ? order : '';
@@ -273,8 +278,18 @@
     const colorOrderEnabled = input(Boolean(configuredOrder), 'checkbox');
     const colorOrder = select(colorOrders, configuredOrder || defaultOrder);
     colorOrder.disabled = !colorOrderEnabled.checked;
-    colorControlEnabled.addEventListener('change', () => { colorControl.disabled = !colorControlEnabled.checked; });
-    colorOrderEnabled.addEventListener('change', () => { colorOrder.disabled = !colorOrderEnabled.checked; });
+    const colorControlField = field('Colour Control', colorControl, 'Choose the control type exposed to Apple Home.');
+    const colorOrderField = field('Colour Order', colorOrder, 'Choose the physical output remap. Leave the function off to use the controller/app setting.');
+    colorControlField.hidden = !colorControlEnabled.checked;
+    colorOrderField.hidden = !colorOrderEnabled.checked;
+    colorControlEnabled.addEventListener('change', () => {
+      colorControl.disabled = !colorControlEnabled.checked;
+      colorControlField.hidden = !colorControlEnabled.checked;
+    });
+    colorOrderEnabled.addEventListener('change', () => {
+      colorOrder.disabled = !colorOrderEnabled.checked;
+      colorOrderField.hidden = !colorOrderEnabled.checked;
+    });
 
     form.append(
       field('Device Name', name),
@@ -284,9 +299,9 @@
       field('Device Type', deviceType),
       field('CCT Control', cctControl, 'Force colour-temperature controls even when the controller does not report CCT support.'),
       field('Enable Colour Control', colorControlEnabled, 'Turn on only to override the automatically detected control type.'),
-      field('Colour Control', colorControl, 'Choose the control type exposed to Apple Home.'),
+      colorControlField,
       field('Enable Colour Order', colorOrderEnabled, 'Turn on only when controller colours do not match their expected outputs.'),
-      field('Colour Order', colorOrder, 'Choose the physical output remap. Leave the function off to use the controller/app setting.'),
+      colorOrderField,
     );
 
     const actions = document.createElement('div');
@@ -298,6 +313,7 @@
     save.addEventListener('click', async () => {
       try {
         if (!name.value.trim() || !host.value.trim()) throw new Error('Device Name and IP Address are required.');
+        if (!isIPv4(host.value)) throw new Error('Enter a valid IPv4 address.');
         const order = colorOrderEnabled.checked ? normalizeColorOrder(colorOrder.value) : '';
         const updated = {
           name: name.value.trim(),

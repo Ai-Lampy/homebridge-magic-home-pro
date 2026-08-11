@@ -28,11 +28,13 @@ function rgbToHsv(red: number, green: number, blue: number): [number, number, nu
 }
 
 export class MagicHomeAccessory {
-  private service: Service;
+  private service!: Service;
   private state: DeviceState | undefined;
   private hue = 0;
   private saturation = 0;
   private brightness = 100;
+  private colorTemperature = 250;
+  private whiteMode = false;
   private capability: Capability;
   private disabledReason: string | undefined;
 
@@ -44,7 +46,7 @@ export class MagicHomeAccessory {
   ) {
     this.state = initialState;
     this.capability = initialState?.capability ?? accessory.context.capability ?? 'unknown';
-    if (initialState) [this.hue, this.saturation, this.brightness] = rgbToHsv(initialState.red, initialState.green, initialState.blue);
+    if (initialState) this.applyState(initialState);
     const { Service, Characteristic } = platform;
     const accessoryName = device.name ?? accessory.displayName;
     accessory.getService(Service.AccessoryInformation)!
@@ -52,8 +54,17 @@ export class MagicHomeAccessory {
       .setCharacteristic(Characteristic.Manufacturer, 'MagicHome / LEDnet')
       .setCharacteristic(Characteristic.Model, this.modelLabel(device))
       .setCharacteristic(Characteristic.SerialNumber, device.mac ?? accessory.context.stableId);
+    this.configureService();
+  }
+
+  private configureService(): void {
+    const { Service, Characteristic } = this.platform;
     const serviceType = this.capability === 'switch' ? Service.Switch : Service.Lightbulb;
-    this.service = accessory.getService(serviceType) ?? accessory.addService(serviceType);
+    const obsoleteType = this.capability === 'switch' ? Service.Lightbulb : Service.Switch;
+    const obsolete = this.accessory.getService(obsoleteType);
+    if (obsolete) this.accessory.removeService(obsolete);
+    this.service = this.accessory.getService(serviceType) ?? this.accessory.addService(serviceType);
+    const accessoryName = this.device.name ?? this.accessory.displayName;
     this.service.setCharacteristic(Characteristic.Name, accessoryName);
     this.service.getCharacteristic(Characteristic.On)
       .onGet(async () => (await this.refresh()).on)
@@ -64,37 +75,41 @@ export class MagicHomeAccessory {
   private syncOptionalCharacteristics(): void {
     const { Characteristic } = this.platform;
     const supportsBrightness = this.capability !== 'switch';
-    const supportsColor = ['rgb', 'rgbw', 'rgbcct', 'unknown'].includes(this.capability);
+    const supportsColor = ['rgb', 'rgbw', 'rgbcct'].includes(this.capability);
     const supportsTemperature = ['rgbcct', 'cct'].includes(this.capability);
     if (supportsBrightness) {
       this.service.getCharacteristic(Characteristic.Brightness)
         .onGet(async () => (await this.refresh()).brightness)
-        .onSet(async value => { this.brightness = Number(value); await this.sendColor(); });
+        .onSet(async value => { this.brightness = Number(value); await this.sendCurrentOutput(); });
     } else {
       this.removeCharacteristic(Characteristic.Brightness);
     }
     if (supportsColor) {
       this.service.getCharacteristic(Characteristic.Hue)
         .onGet(async () => { await this.refresh(); return this.hue; })
-        .onSet(async value => { this.hue = Number(value); await this.sendColor(); });
+        .onSet(async value => {
+          this.hue = Number(value);
+          this.whiteMode = this.capability === 'rgbw' && this.saturation <= 1;
+          await this.sendColor();
+        });
       this.service.getCharacteristic(Characteristic.Saturation)
         .onGet(async () => { await this.refresh(); return this.saturation; })
-        .onSet(async value => { this.saturation = Number(value); await this.sendColor(); });
+        .onSet(async value => {
+          this.saturation = Number(value);
+          this.whiteMode = this.capability === 'rgbw' && this.saturation <= 1;
+          await this.sendColor();
+        });
     } else {
       this.removeCharacteristic(Characteristic.Hue);
       this.removeCharacteristic(Characteristic.Saturation);
     }
     if (supportsTemperature) {
       this.service.getCharacteristic(Characteristic.ColorTemperature)
-        .onGet(() => 250)
+        .onGet(async () => { await this.refresh(); return this.colorTemperature; })
         .onSet(async (value: CharacteristicValue) => {
-          const mired = Math.max(140, Math.min(500, Number(value)));
-          const ratio = (mired - 140) / 360;
-          await this.execute(transport => transport.setColor(this.capability, {
-            red: 0, green: 0, blue: 0,
-            warmWhite: 255 * ratio * this.brightness / 100,
-            coolWhite: 255 * (1 - ratio) * this.brightness / 100,
-          }));
+          this.colorTemperature = Math.max(140, Math.min(500, Number(value)));
+          this.whiteMode = true;
+          await this.sendWhite();
         });
     } else {
       this.removeCharacteristic(Characteristic.ColorTemperature);
@@ -117,9 +132,12 @@ export class MagicHomeAccessory {
     this.service.setCharacteristic(Characteristic.Name, accessoryName);
     if (state) {
       this.state = state;
+      const serviceTypeChanged = (this.capability === 'switch') !== (state.capability === 'switch');
       const capabilityChanged = this.capability !== state.capability;
       this.capability = state.capability;
-      if (capabilityChanged) this.syncOptionalCharacteristics();
+      this.applyState(state);
+      if (serviceTypeChanged) this.configureService();
+      else if (capabilityChanged) this.syncOptionalCharacteristics();
     }
   }
 
@@ -141,17 +159,44 @@ export class MagicHomeAccessory {
 
   private async refresh(): Promise<DeviceState> {
     this.state = await this.execute(transport => transport.queryState());
-    [this.hue, this.saturation, this.brightness] = rgbToHsv(this.state.red, this.state.green, this.state.blue);
+    this.applyState(this.state);
     return this.state;
   }
 
+  private applyState(state: DeviceState): void {
+    const rgbMaximum = Math.max(state.red, state.green, state.blue);
+    const whiteMaximum = Math.max(state.warmWhite, state.coolWhite);
+    if (rgbMaximum > 0) [this.hue, this.saturation] = rgbToHsv(state.red, state.green, state.blue);
+    this.brightness = state.brightness;
+    this.whiteMode = state.capability === 'cct' || whiteMaximum > rgbMaximum;
+    const whiteTotal = state.warmWhite + state.coolWhite;
+    if (whiteTotal > 0) this.colorTemperature = Math.round(140 + (state.warmWhite / whiteTotal) * 360);
+  }
+
+  private async sendCurrentOutput(): Promise<void> {
+    if (this.capability === 'cct' || (this.capability === 'rgbcct' && this.whiteMode)) await this.sendWhite();
+    else await this.sendColor();
+  }
+
   private async sendColor(): Promise<void> {
-    const [red, green, blue] = hsvToRgb(this.hue, this.saturation, this.brightness);
+    const useRgbwWhite = this.capability === 'rgbw' && this.whiteMode;
+    const [red, green, blue] = useRgbwWhite ? [0, 0, 0] : hsvToRgb(this.hue, this.saturation, this.brightness);
     await this.execute(transport => transport.setColor(this.capability, {
       red,
       green,
       blue,
-      warmWhite: this.capability === 'rgbw' ? this.brightness * 2.55 : 0,
+      warmWhite: useRgbwWhite ? this.brightness * 2.55 : 0,
+    }));
+  }
+
+  private async sendWhite(): Promise<void> {
+    const ratio = (this.colorTemperature - 140) / 360;
+    await this.execute(transport => transport.setColor(this.capability, {
+      red: 0,
+      green: 0,
+      blue: 0,
+      warmWhite: 255 * ratio * this.brightness / 100,
+      coolWhite: 255 * (1 - ratio) * this.brightness / 100,
     }));
   }
 

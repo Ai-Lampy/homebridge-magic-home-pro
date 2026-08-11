@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.2
+
+- Hide the Colour Control and Colour Order selections until their corresponding override checkboxes are enabled.
+- Correct RGBW colour/white separation and preserve CCT white output when brightness or colour temperature changes.
+- Replace obsolete Switch or Lightbulb services when a controller's effective capability changes, preventing duplicate services and characteristic warnings.
+- Treat unknown controllers conservatively without exposing unconfirmed colour controls.
+- Apply subnet probe limits globally across concurrent workers and reject invalid IPv4 addresses in the Config UI.
+- Give each MAC-less controller a collision-resistant persisted identity instead of deriving identity from a shared name or model.
+- Complete the MIT licence text, document the plugin's distinguishing behaviour, and expand Config UI, accessory, package and Homebridge startup tests.
+
 ## 0.5.1
 
 - Add explicit enable checkboxes for Colour Control and Colour Order overrides, and make discovered MAC addresses read-only.

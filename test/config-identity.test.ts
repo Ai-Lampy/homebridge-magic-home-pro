@@ -38,6 +38,14 @@ describe('configuration and identity', () => {
     expect(b).toBe(a);
   });
 
+  it('does not collide when separate MAC-less devices have the same display name', () => {
+    const a = stableDeviceId({ host: '192.168.1.2', name: 'LED Controller', model: 'AK001' });
+    const b = stableDeviceId({ host: '192.168.1.3', name: 'LED Controller', model: 'AK001' });
+    expect(a).toMatch(/^generated:/);
+    expect(b).toMatch(/^generated:/);
+    expect(a).not.toBe(b);
+  });
+
   it('rejects old and corrupt cached contexts without throwing', () => {
     expect(readCachedContext(null)).toBeUndefined();
     expect(readCachedContext({ host: '192.168.1.2' })).toBeUndefined();

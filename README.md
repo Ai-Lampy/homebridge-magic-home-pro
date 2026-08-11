@@ -2,6 +2,17 @@
 
 A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi lights and controllers. It communicates only over your LAN: there is no MagicHome login, cloud token, fixed regional hostname, region allowlist, telemetry, or runtime controller-definition download.
 
+## What makes this plugin different
+
+Magic Home Pro combines automatic startup discovery with an explicit device-management UI. Its focus is predictable local operation and recovery on networks where basic broadcast-only discovery is not enough:
+
+- directed-broadcast, individual-IP and optional bounded CIDR discovery for routed LANs and VLANs;
+- startup-only new-device discovery instead of continuous background scanning;
+- five-attempt, device-specific offline recovery without registering unrelated devices;
+- non-destructive handling of missing accessories so HomeKit identity, rooms, scenes and automations are retained;
+- visible detected capabilities with deliberate CCT, colour-profile and physical colour-order overrides; and
+- explicit removal and exclusion through the Config UI so a removed controller is not immediately rediscovered.
+
 ## Requirements
 
 - Homebridge 2
@@ -64,7 +75,7 @@ The custom Homebridge UI has two accessible tabs and does not expose raw JSON:
 
 Save, update, and removal results are shown as a compact status inside the plugin UI rather than as a screen-covering notification.
 
-Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, an optional colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and optional physical colour-output remapping. The Colour Control and Colour Order dropdowns remain disabled until their corresponding enable checkbox is selected. Automatic colour control uses the detected controller type, so a detected dimmer is exposed in Apple Home with power and brightness controls rather than RGB controls unless the user deliberately overrides it.
+Each saved device supports a friendly name, a location/room label, LED Strip or Lightbulb presentation, forced CCT control, an optional colour-control override (`RGB`, `RGBW`, `RGBWW`, `RGBCCT`, `RGBWCCT`, or `RGBWWCW`), and optional physical colour-output remapping. The Colour Control and Colour Order selections remain hidden until their corresponding enable checkbox is selected. Automatic colour control uses the detected controller type, so a detected dimmer is exposed in Apple Home with power and brightness controls rather than RGB controls unless the user deliberately overrides it.
 
 Colour-order remapping is off by default, allowing the controller to use the output order selected in its app. Enable a listed order only if colours do not match. For example, select `GRB` if commands intended for red and green operate the opposite outputs. The letters identify the logical colour connected to each controller channel: `R`, `G`, `B`, `W` (warm/white), and `C` (cool white).
 
@@ -106,7 +117,9 @@ If a controller is silent, verify:
 
 ## Supported protocol families
 
-The transport attempts current `81 8A 8B` and legacy `EF 01 77` state queries and detects capability from replies. RGB, RGBW, RGB+CCT, CCT, dimmer, and switch capability classes are represented. Unknown response types remain registered diagnostically rather than crashing Homebridge.
+The transport attempts current `81 8A 8B` and legacy `EF 01 77` state queries and detects capability from replies. RGB, RGBW, RGB+CCT, CCT, dimmer, and switch capability classes are represented. RGBW output keeps colour and dedicated white channels mutually exclusive, while CCT output retains its warm/cool ratio when brightness changes. Unknown response types remain registered conservatively without unconfirmed colour controls rather than crashing Homebridge.
+
+MagicHome-compatible firmware varies between manufacturers even when controllers share a model byte. If a controller behaves differently, include its model, detected capability, sanitized state-response bytes and observed channel behaviour in a compatibility report.
 
 ## Support
 
