@@ -1,4 +1,4 @@
-# homebridge-magic-home-pro
+# Homebridge-Magic-Home-Pro
 
 A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi lights and controllers. It communicates only over your LAN: there is no MagicHome login, cloud token, fixed regional hostname, region allowlist, telemetry, or runtime controller-definition download.
 
