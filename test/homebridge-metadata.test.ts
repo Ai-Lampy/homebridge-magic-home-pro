@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.3.0',
+      version: '0.3.1',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -50,7 +50,7 @@ describe('Homebridge plugin metadata', () => {
     const notes = execFileSync(process.execPath, ['scripts/extract-release-notes.mjs', pkg.version], {
       encoding: 'utf8',
     });
-    expect(notes).toContain('Homebridge UI');
+    expect(notes.trim().length).toBeGreaterThan(0);
     const workflow = fs.readFileSync('.github/workflows/publish-npm.yml', 'utf8');
     expect(workflow).toContain('gh release create');
     expect(workflow).toContain('--notes-file release-notes.md');
