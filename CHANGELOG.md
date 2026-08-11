@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Let users add or update controllers found by the diagnostic scan directly from the Homebridge UI.
+
 ## 0.2.0
 
 - Add local UDP discovery and TCP control for MagicHome/LEDnet controllers.

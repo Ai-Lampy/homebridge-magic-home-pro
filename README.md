@@ -74,7 +74,9 @@ Optional subnet probing is disabled by default. It scans only explicitly configu
 
 ## Diagnostics
 
-The custom configuration UI exposes a diagnostic scan that does not register or delete accessories. Logs distinguish interface/bind/send failures, silence after discovery, unreachable TCP endpoints, unsupported responses, unknown capabilities, and previously known offline devices. Set `logLevel` to `trace` for sanitized raw protocol hex (LAN addresses and controller packets only; no credentials or unrelated traffic).
+The custom configuration UI exposes a diagnostic scan that does not register or delete accessories by itself. Each result has an explicit **Add to configuration** action; this saves the controller's IP and MAC to the manual `devices` list. If a configured controller is found at a new address, **Update configuration** changes its address while preserving its friendly name. Restart Homebridge or the plugin child bridge after saving so startup discovery can register a newly added controller.
+
+Logs distinguish interface/bind/send failures, silence after discovery, unreachable TCP endpoints, unsupported responses, unknown capabilities, and previously known offline devices. Set `logLevel` to `trace` for sanitized raw protocol hex (LAN addresses and controller packets only; no credentials or unrelated traffic).
 
 If a controller is silent, verify:
 
