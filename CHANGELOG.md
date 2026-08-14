@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0-beta.1
+
+### Fixed
+
+- Fixed controller status responses potentially being processed before every TCP response fragment had arrived.
+- Improved RGB+CCT and cool-white state reliability.
+- Updated the custom UI device scan to include configured bounded subnet probing, matching normal Homebridge discovery.
+
+### Improved
+
+- Added regression tests for fragmented, complete and legacy controller responses.
+- Added diagnostic discovery and duplicate-device handling tests.
+- Clarified that users may need to search using the complete `homebridge-magic-home-pro` npm package name.
+- Added troubleshooting guidance for Homebridge and npm search issues.
+- Added dependency-update, security, and contribution metadata.
+
+### Beta notice
+
+This release contains changes to controller response handling and device discovery. Existing configurations and cached accessory identities remain compatible, but testing across different Magic Home and LEDnet controller types is requested.
+
 ## 0.5.4
 
 - Coalesce simultaneous HomeKit characteristic reads into one controller state request.

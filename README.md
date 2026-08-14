@@ -43,7 +43,31 @@ Remote access is provided by Apple Home, not by MagicHome or this plugin. The us
 
 No inbound port forwarding, VPN, MagicHome cloud login, or plugin-specific cloud relay is required. Commands sent from outside the home reach the Apple Home hub, which forwards them to Homebridge; Homebridge then controls the MagicHome device locally over TCP `5577`.
 
-## Installation and configuration
+## Installation
+
+1. Open the **Plugins** page in Homebridge UI.
+2. Search using the complete npm package name:
+
+   `homebridge-magic-home-pro`
+
+3. Select **Magic Home Pro** and choose **Install**.
+4. Open the plugin settings and configure device discovery.
+
+> [!NOTE]
+> The complete package name may be required. General searches such as “Magic Home Pro” may not display recently published plugins because Homebridge relies on npm's ranked search results.
+
+### Installing the beta
+
+The current beta can be installed through the Homebridge UI version selector:
+
+1. Find `homebridge-magic-home-pro` in the Plugins page.
+2. Open the plugin's version selector.
+3. Select `0.6.0-beta.1`.
+4. Complete the installation and restart Homebridge.
+
+The beta is not installed automatically. The normal stable release remains available under the npm `latest` tag.
+
+### Configuration
 
 Install through Homebridge UI, then add the platform. Defaults work on a flat LAN:
 
@@ -87,7 +111,13 @@ The MAC Address is detected by the plugin and displayed as read-only because it 
 
 The Location field is plugin metadata. HomeKit does not allow a bridge plugin to assign Apple Home rooms; select the actual room for the accessory in the Apple Home app after it is added.
 
-### Discovery and offline recovery
+### Device discovery
+
+The plugin can find controllers through Magic Home UDP discovery, manually configured device addresses, and optional bounded subnet probing. Subnet probing only scans CIDR ranges explicitly configured by the user. The custom UI's **Scan for Devices** function uses the same discovery sources as the running Homebridge platform.
+
+Discovery results from configuration, cache, UDP, and subnet probing are combined by normalized MAC address when available, or by IP address otherwise. This prevents the same controller appearing more than once when multiple discovery methods find it.
+
+### Offline recovery
 
 New-device discovery runs only when Homebridge or the plugin child bridge starts. The plugin does not perform perpetual background discovery.
 
@@ -111,12 +141,34 @@ Restart Homebridge or the plugin child bridge after adding or removing a device 
 
 Logs distinguish interface/bind/send failures, silence after discovery, unreachable TCP endpoints, unsupported responses, unknown capabilities, and previously known offline devices. Set `logLevel` to `trace` for sanitized raw protocol hex (LAN addresses and controller packets only; no credentials or unrelated traffic).
 
-If a controller is silent, verify:
+### Troubleshooting
 
-1. Homebridge has an eligible IPv4 interface.
-2. UDP `48899` broadcast/replies and TCP `5577` are allowed.
-3. A direct device IP works across VLANs.
-4. The device firmware actually exposes a LAN endpoint. The configured MagicHome cloud-server location is not relevant and does not need to be changed.
+#### Plugin does not appear in Homebridge search
+
+Search using the complete npm package name:
+
+`homebridge-magic-home-pro`
+
+Homebridge's general plugin search relies on npm's ranked search results. Newer plugins may not appear when searching for terms such as “Magic Home” or “LED controller”, even though the package is publicly available.
+
+If an exact-name search also fails, check the Homebridge logs for:
+
+`Failed to search the npm registry`
+
+This normally indicates a network, DNS, certificate, or npm registry connectivity problem on the Homebridge server.
+
+#### Device discovery and control
+
+If a controller is silent or behaves unexpectedly, check the following:
+
+1. **Different VLANs:** UDP broadcasts normally do not cross routed networks. Configure the controller's individual IP, an appropriate directed-broadcast target, or an explicitly bounded subnet probe, and permit the traffic between VLANs.
+2. **Blocked discovery:** allow UDP port `48899` broadcasts and replies between Homebridge and the controller. Broadcast discovery can fail even when direct TCP control works.
+3. **Blocked control:** allow TCP port `5577`. A controller discovered over UDP but unavailable on TCP cannot be controlled by this plugin.
+4. **No MAC address:** some controllers reply by IP without reporting a MAC. They can still be configured, but a fixed DHCP lease is strongly recommended so the address and generated HomeKit identity remain stable.
+5. **Changing addresses:** use a fixed DHCP lease for each controller, especially for manual-IP, routed-VLAN, and MAC-less devices.
+6. **Incorrect colours:** enable **Colour Order** for the device and choose the mapping that makes red, green, and blue operate the correct physical channels. Leave it disabled when the controller/app order already works.
+7. **Warm-white or cool-white not updating:** confirm the detected capability supports the relevant white channel, review any CCT or Colour Control override, and enable trace logging to capture a sanitized state response for a compatibility report. The transport waits for trailing TCP response fragments used by white-channel state fields.
+8. **No LAN endpoint:** verify that the device firmware exposes Magic Home LAN control. The configured MagicHome cloud-server location is not relevant and does not need to be changed.
 
 ## Supported protocol families
 

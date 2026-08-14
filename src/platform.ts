@@ -4,14 +4,13 @@ import type {
 import { MagicHomeAccessory } from './accessory.js';
 import { effectiveCapability } from './capability.js';
 import { normalizeConfig } from './config.js';
-import { discoverDevices } from './discovery.js';
+import { discoverAllCandidates, discoverDevices } from './discovery.js';
 import { readCachedContext, stableDeviceId } from './identity.js';
 import { normalizeMac } from './network.js';
 import { retryWithDelay } from './retry.js';
 import {
   DEVICE_RESCAN_DELAY_MS, DEVICE_SCAN_ATTEMPTS, PLATFORM_NAME, PLUGIN_NAME,
 } from './settings.js';
-import { probeSubnets } from './subnet-probe.js';
 import { MagicHomeTransport, type TransportOptions } from './transport.js';
 import type { CachedDeviceContext, DiscoveredDevice, MagicHomeConfig } from './types.js';
 
@@ -125,15 +124,11 @@ export class MagicHomePlatform implements DynamicPlatformPlugin {
         sources: ['configuration'],
       };
     });
-    const discovered = this.config.discovery.enabled
-      ? await discoverDevices(this.config.discovery, this.log, { signal: this.abortController.signal }) : [];
-    const probed = await probeSubnets(
-      this.config.discovery.subnetProbe,
-      this.config.discovery.timeoutMs,
-      this.abortController.signal,
-    );
-    const candidates = this.mergeCandidates([...known, ...manual, ...discovered, ...probed])
-      .filter(device => !this.isExcluded(device));
+    const candidates = (await discoverAllCandidates(this.config.discovery, this.log, {
+      known,
+      manual,
+      signal: this.abortController.signal,
+    })).filter(device => !this.isExcluded(device));
     if (candidates.length === 0) {
       this.log.warn('Discovery completed with zero candidates. Check UDP 48899, VLAN/broadcast routing, or configure a device IP. The controller may expose no LAN endpoint.');
       return new Set();

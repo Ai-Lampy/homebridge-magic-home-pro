@@ -1,6 +1,8 @@
 import net from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildColorCommand, buildPowerCommand, capabilityFromResponse, MagicHomeTransport, parseState } from '../src/transport.js';
+import {
+  buildColorCommand, buildPowerCommand, capabilityFromResponse, CURRENT_QUERY, MagicHomeTransport, parseState,
+} from '../src/transport.js';
 
 const servers: net.Server[] = [];
 afterEach(() => servers.splice(0).forEach(server => server.close()));
@@ -13,6 +15,10 @@ async function simulatedController(handler: (packet: Buffer, socket: net.Socket)
 }
 
 describe('MagicHome transport', () => {
+  const currentResponse = Buffer.from([
+    0x81, 0x35, 0x23, 0x61, 0x21, 0x00, 255, 64, 32, 20, 10, 0x00, 0xf0, 0xef,
+  ]);
+
   it.each([
     { type: 0x33, label: '0x33', expected: 'rgb' },
     { type: 0x35, label: '0x35', expected: 'rgbcct' },
@@ -60,6 +66,57 @@ describe('MagicHome transport', () => {
     const state = await new MagicHomeTransport('127.0.0.1', { port, timeoutMs: 500 }).queryState();
     expect(state.query).toBe('legacy');
     expect(state.capability).toBe('rgbcct');
+  });
+
+  it('waits for a fragmented 14-byte current state response', async () => {
+    const port = await simulatedController((_packet, socket) => {
+      socket.write(currentResponse.subarray(0, 10));
+      setTimeout(() => socket.end(currentResponse.subarray(10)), 10);
+    });
+
+    const state = await new MagicHomeTransport('127.0.0.1', { port, timeoutMs: 500 }).queryState();
+
+    expect(state.raw).toHaveLength(14);
+    expect(state).toMatchObject({
+      query: 'current', on: true, capability: 'rgbcct',
+      red: 255, green: 64, blue: 32, warmWhite: 20, coolWhite: 10,
+    });
+  });
+
+  it('accepts a complete current state response in one TCP chunk', async () => {
+    const port = await simulatedController((_packet, socket) => socket.end(currentResponse));
+
+    const state = await new MagicHomeTransport('127.0.0.1', { port, timeoutMs: 500 }).queryState();
+
+    expect(state.raw).toEqual(currentResponse);
+    expect(state.coolWhite).toBe(10);
+  });
+
+  it('accepts a minimum-length legacy response when the controller closes', async () => {
+    const legacyResponse = Buffer.from([0xef, 0x35, 0x23, 0x61, 0x21, 0x00, 1, 2, 3, 4]);
+    const port = await simulatedController((packet, socket) => {
+      if (packet.equals(CURRENT_QUERY)) socket.end();
+      else socket.end(legacyResponse);
+    });
+
+    const state = await new MagicHomeTransport('127.0.0.1', { port, timeoutMs: 500 }).queryState();
+
+    expect(state.raw).toEqual(legacyResponse);
+    expect(state).toMatchObject({ query: 'legacy', warmWhite: 4, coolWhite: 0 });
+  });
+
+  it('rejects a controller response shorter than the minimum state frame', async () => {
+    const port = await simulatedController((_packet, socket) => socket.end(Buffer.alloc(9, 0x81)));
+    const transport = new MagicHomeTransport('127.0.0.1', { port, timeoutMs: 100 });
+
+    await expect(transport.queryState()).rejects.toThrow(/only 9 bytes/);
+  });
+
+  it('retains timeout errors when a controller returns no data', async () => {
+    const port = await simulatedController(() => undefined);
+    const transport = new MagicHomeTransport('127.0.0.1', { port, timeoutMs: 30 });
+
+    await expect(transport.queryState()).rejects.toThrow(/timed out/);
   });
 
   it('rejects malformed and unknown responses', () => {

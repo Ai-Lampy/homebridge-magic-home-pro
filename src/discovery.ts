@@ -2,6 +2,7 @@ import dgram, { type RemoteInfo, type Socket } from 'node:dgram';
 import { setTimeout as delay } from 'node:timers/promises';
 import { cidrBroadcast, eligibleInterfaces, isIPv4, isValidCidr, normalizeMac, type IPv4Interface } from './network.js';
 import { UDP_DISCOVERY_PORT } from './settings.js';
+import { probeSubnets } from './subnet-probe.js';
 import type { DiscoveryConfig, DiscoveredDevice } from './types.js';
 
 const DISCOVERY_MESSAGE = Buffer.from('HF-A11ASSISTHREAD', 'ascii');
@@ -18,6 +19,21 @@ export interface DiscoveryOptions {
   signal?: AbortSignal;
 }
 
+export interface CandidateDiscoveryOptions extends DiscoveryOptions {
+  known?: readonly DiscoveredDevice[];
+  manual?: readonly DiscoveredDevice[];
+  discover?: (
+    config: DiscoveryConfig,
+    logger: DiscoveryLogger,
+    options?: DiscoveryOptions,
+  ) => Promise<DiscoveredDevice[]>;
+  probe?: (
+    config: DiscoveryConfig['subnetProbe'],
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ) => Promise<DiscoveredDevice[]>;
+}
+
 export function parseDiscoveryReply(packet: Buffer, remoteAddress: string, source: string): DiscoveredDevice | undefined {
   const sanitized = packet.toString('utf8').replace(/[\0\r\n]/g, '').trim();
   if (!sanitized) return undefined;
@@ -31,21 +47,40 @@ export function parseDiscoveryReply(packet: Buffer, remoteAddress: string, sourc
 }
 
 function mergeDevice(devices: Map<string, DiscoveredDevice>, incoming: DiscoveredDevice): void {
-  const key = incoming.mac ?? incoming.host;
-  const existingByHost = [...devices.entries()].find(([, item]) => item.host === incoming.host);
+  const incomingMac = normalizeMac(incoming.mac);
+  const normalizedIncoming: DiscoveredDevice = {
+    ...incoming,
+    ...(incomingMac ? { mac: incomingMac } : {}),
+  };
+  if (!incomingMac) delete normalizedIncoming.mac;
+  const key = incomingMac ?? normalizedIncoming.host;
+  const existingByHost = [...devices.entries()].find(([, item]) => item.host === normalizedIncoming.host);
   const existingEntry = devices.get(key) ? [key, devices.get(key)] as const : existingByHost;
   if (!existingEntry?.[1]) {
-    devices.set(key, incoming);
+    devices.set(key, normalizedIncoming);
     return;
   }
   const [oldKey, existing] = existingEntry;
   const merged: DiscoveredDevice = {
     ...existing,
-    ...incoming,
-    sources: [...new Set([...existing.sources, ...incoming.sources])],
+    ...normalizedIncoming,
+    sources: [...new Set([...existing.sources, ...normalizedIncoming.sources])],
   };
+  // Saved configuration is authoritative for optional overrides. Their
+  // absence means the user has switched the override off, so an older cached
+  // value must not survive candidate merging.
+  if (normalizedIncoming.source === 'configuration') {
+    if (!normalizedIncoming.colorControlOverride) delete merged.colorControl;
+    if (!normalizedIncoming.colorOrder) delete merged.colorOrder;
+  }
   if (oldKey !== key) devices.delete(oldKey);
-  devices.set(incoming.mac ?? existing.mac ?? key, merged);
+  devices.set(normalizeMac(merged.mac) ?? key, merged);
+}
+
+export function mergeDiscoveredDevices(input: readonly DiscoveredDevice[]): DiscoveredDevice[] {
+  const merged = new Map<string, DiscoveredDevice>();
+  for (const device of input) mergeDevice(merged, device);
+  return [...merged.values()];
 }
 
 async function scanFromInterface(
@@ -122,4 +157,30 @@ export async function discoverDevices(
     if (device.sources.length > 1) logger.debug(`Duplicate response for ${device.mac ?? device.host} arrived through ${device.sources.join(', ')}`);
   }
   return [...merged.values()];
+}
+
+export async function discoverAllCandidates(
+  config: DiscoveryConfig,
+  logger: DiscoveryLogger,
+  options: CandidateDiscoveryOptions = {},
+): Promise<DiscoveredDevice[]> {
+  const discover = options.discover ?? discoverDevices;
+  const probe = options.probe ?? probeSubnets;
+  const discoveryOptions: DiscoveryOptions = {
+    ...(options.interfaces ? { interfaces: options.interfaces } : {}),
+    ...(options.createSocket ? { createSocket: options.createSocket } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
+  };
+  const [discovered, probed] = await Promise.all([
+    config.enabled ? discover(config, logger, discoveryOptions) : Promise.resolve([]),
+    config.subnetProbe.enabled
+      ? probe(config.subnetProbe, config.timeoutMs, options.signal)
+      : Promise.resolve([]),
+  ]);
+  return mergeDiscoveredDevices([
+    ...(options.known ?? []),
+    ...(options.manual ?? []),
+    ...discovered,
+    ...probed,
+  ]);
 }

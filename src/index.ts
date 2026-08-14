@@ -9,5 +9,5 @@ const initializer: PluginInitializer = (api): void => {
 export default initializer;
 
 export { MagicHomePlatform } from './platform.js';
-export { discoverDevices, parseDiscoveryReply } from './discovery.js';
+export { discoverAllCandidates, discoverDevices, parseDiscoveryReply } from './discovery.js';
 export { MagicHomeTransport } from './transport.js';

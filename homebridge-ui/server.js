@@ -12,10 +12,17 @@ class MagicHomeUiServer extends HomebridgePluginUiServer {
         warn: message => this.pushEvent('scan-log', { level: 'warn', message }),
         error: message => this.pushEvent('scan-log', { level: 'error', message }),
       };
-      const known = config.devices.map(device => ({
-        host: device.host, name: device.name, mac: device.mac,
-        source: 'configuration', sources: ['configuration'],
-      }));
+      const cached = normalizeConfig({ devices: payload?.cachedDevices ?? [] }).devices;
+      const known = [
+        ...config.devices.map(device => ({
+          host: device.host, name: device.name, mac: device.mac,
+          source: 'configuration', sources: ['configuration'],
+        })),
+        ...cached.map(device => ({
+          host: device.host, name: device.name, mac: device.mac,
+          source: 'cache', sources: ['cache'],
+        })),
+      ];
       return diagnosticScan(config.discovery, known, logger);
     });
     this.ready();

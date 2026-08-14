@@ -8,11 +8,16 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.5.4',
+      version: '0.6.0-beta.1',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
-    expect(pkg.keywords).toEqual(expect.arrayContaining(['homebridge-plugin', 'supports-hap']));
+    expect(pkg.keywords).toEqual([
+      'homebridge-plugin', 'supports-hap', 'homebridge', 'homekit', 'apple-home', 'magic-home',
+      'magic-home-pro', 'magichome', 'lednet', 'led-controller', 'wifi-led', 'led-strip',
+      'lightbulb', 'dimmer', 'rgb', 'rgbw', 'rgbww', 'rgbcct', 'cct', 'smart-lighting',
+      'local-control', 'lan',
+    ]);
     expect(pkg.keywords).not.toContain('supports-matter');
     expect(pkg.devDependencies.homebridge).toBe('^2.3.0');
     for (const field of ['dependencies', 'optionalDependencies', 'bundledDependencies', 'peerDependencies']) {
@@ -65,6 +70,7 @@ describe('Homebridge plugin metadata', () => {
     expect(ui).toContain('font-size: 12px');
     expect(ui.indexOf('id="configured-devices"')).toBeLessThan(ui.indexOf('alert alert-info room-note'));
     expect(ui).toContain('homebridge.getCachedAccessories()');
+    expect(ui).toContain('cachedDevices: cachedAccessories.map');
     expect(ui).toContain('background: #fff');
     expect(ui).toContain('Configured devices');
     expect(ui).toContain('Edit Details');
@@ -90,6 +96,10 @@ describe('Homebridge plugin metadata', () => {
     const workflow = fs.readFileSync('.github/workflows/publish-npm.yml', 'utf8');
     expect(workflow).toContain('gh release create');
     expect(workflow).toContain('--notes-file release-notes.md');
+    expect(workflow).toContain('echo "tag=beta"');
+    expect(workflow).toContain('echo "tag=latest"');
+    expect(workflow).toContain('npm publish --tag "$NPM_TAG" --provenance --access public');
+    expect(workflow).toContain('--prerelease');
   });
 
   it('tests every supported Node.js version on each GitHub update', () => {
@@ -100,5 +110,13 @@ describe('Homebridge plugin metadata', () => {
     const publishWorkflow = fs.readFileSync('.github/workflows/publish-npm.yml', 'utf8');
     expect(publishWorkflow).toContain('needs: test-node-support');
     expect(workflow).toContain('npm pack --dry-run --ignore-scripts');
+  });
+
+  it('publishes repository security, contribution, and dependency-update policies', () => {
+    expect(fs.readFileSync('SECURITY.md', 'utf8')).toContain('Private Vulnerability Reporting');
+    expect(fs.readFileSync('CONTRIBUTING.md', 'utf8')).toContain('pnpm run check');
+    const dependabot = fs.readFileSync('.github/dependabot.yml', 'utf8');
+    expect(dependabot).toContain('package-ecosystem: npm');
+    expect(dependabot).toContain('package-ecosystem: github-actions');
   });
 });

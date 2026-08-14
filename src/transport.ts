@@ -6,6 +6,10 @@ import type { Capability, DeviceState } from './types.js';
 export const CURRENT_QUERY = Buffer.from([0x81, 0x8a, 0x8b, 0x96]);
 export const LEGACY_QUERY = Buffer.from([0xef, 0x01, 0x77]);
 
+const MINIMUM_STATE_RESPONSE_LENGTH = 10;
+const CURRENT_STATE_RESPONSE_LENGTH = 14;
+const FRAME_IDLE_MS = 30;
+
 export interface TransportOptions {
   port?: number;
   timeoutMs?: number;
@@ -156,29 +160,57 @@ export class MagicHomeTransport {
       const socket = net.createConnection({ host: this.host, port: this.port });
       const chunks: Buffer[] = [];
       let settled = false;
-      const finish = (error?: Error, result = Buffer.alloc(0)): void => {
+      let frameTimer: NodeJS.Timeout | undefined;
+      const collectedResponse = (): Buffer => Buffer.concat(chunks);
+      const expectedResponseLength = (response: Buffer): number | undefined => {
+        // Current-protocol controllers normally return a 14-byte state frame.
+        // Legacy and older variants do not expose a reliable length field, so
+        // those frames are completed by EOF or the short inter-chunk idle gap.
+        if (packet.equals(CURRENT_QUERY) && response[0] === 0x81) return CURRENT_STATE_RESPONSE_LENGTH;
+        return undefined;
+      };
+      const finish = (error?: Error, result: Buffer = Buffer.alloc(0)): void => {
         if (settled) return;
         settled = true;
+        if (frameTimer) clearTimeout(frameTimer);
         socket.destroy();
-        if (error) reject(error); else resolve(result);
+        if (error) {
+          reject(error);
+        } else {
+          if (result.length > 0) this.trace?.(`TCP ${this.host}:${this.port} rx=${result.toString('hex')}`);
+          resolve(result);
+        }
+      };
+      const scheduleFrameCompletion = (): void => {
+        if (frameTimer) clearTimeout(frameTimer);
+        frameTimer = setTimeout(() => {
+          const result = collectedResponse();
+          if (result.length >= MINIMUM_STATE_RESPONSE_LENGTH) finish(undefined, result);
+        }, FRAME_IDLE_MS);
       };
       socket.setTimeout(this.timeoutMs);
-      socket.once('timeout', () => finish(new TransportError(`TCP ${this.host}:${this.port} timed out`, 'timeout')));
+      socket.once('timeout', () => {
+        const result = collectedResponse();
+        if (expectReply && result.length >= MINIMUM_STATE_RESPONSE_LENGTH) finish(undefined, result);
+        else finish(new TransportError(`TCP ${this.host}:${this.port} timed out`, 'timeout'));
+      });
       socket.once('error', error => finish(new TransportError(`TCP ${this.host}:${this.port} unreachable: ${error.message}`, 'unreachable')));
       socket.on('data', chunk => {
         chunks.push(Buffer.from(chunk));
-        const result = Buffer.concat(chunks);
-        if (result.length >= 10) {
-          this.trace?.(`TCP ${this.host}:${this.port} rx=${result.toString('hex')}`);
-          finish(undefined, result);
+        const result = collectedResponse();
+        const expectedLength = expectedResponseLength(result);
+        if (expectedLength !== undefined && result.length >= expectedLength) {
+          finish(undefined, result.subarray(0, expectedLength));
+          return;
         }
+        if (result.length >= MINIMUM_STATE_RESPONSE_LENGTH) scheduleFrameCompletion();
       });
       socket.once('connect', () => socket.write(packet, error => {
         if (error) finish(new TransportError(`TCP write failed: ${error.message}`, 'unreachable'));
         else if (!expectReply) finish();
       }));
       socket.once('end', () => {
-        const result = Buffer.concat(chunks);
+        const result = collectedResponse();
         if (result.length > 0) finish(undefined, result);
         else if (expectReply) finish(new TransportError('Controller closed without a response', 'malformed'));
       });
