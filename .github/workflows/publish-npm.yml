@@ -60,6 +60,17 @@ jobs:
           echo "name=$(node -p "require('./package.json').name")" >> "$GITHUB_OUTPUT"
           echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
+      - name: Determine npm distribution tag
+        id: npm-tag
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "tag=beta" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Prepare release notes
         env:
           PACKAGE_NAME: ${{ steps.package.outputs.name }}
@@ -82,7 +93,9 @@ jobs:
 
       - name: Publish package
         if: steps.registry.outputs.exists != 'true'
-        run: npm publish --provenance --access public
+        env:
+          NPM_TAG: ${{ steps.npm-tag.outputs.tag }}
+        run: npm publish --tag "$NPM_TAG" --provenance --access public
 
       - name: Create GitHub release with notes
         env:
@@ -91,13 +104,28 @@ jobs:
         shell: bash
         run: |
           tag="v${PACKAGE_VERSION}"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release edit "$tag" \
-              --title "Magic Home Pro ${PACKAGE_VERSION}" \
-              --notes-file release-notes.md
+          if [[ "$PACKAGE_VERSION" == *-* ]]; then
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release edit "$tag" \
+                --title "$tag" \
+                --notes-file release-notes.md \
+                --prerelease
+            else
+              gh release create "$tag" \
+                --target "$GITHUB_SHA" \
+                --title "$tag" \
+                --notes-file release-notes.md \
+                --prerelease
+            fi
           else
-            gh release create "$tag" \
-              --target "$GITHUB_SHA" \
-              --title "Magic Home Pro ${PACKAGE_VERSION}" \
-              --notes-file release-notes.md
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release edit "$tag" \
+                --title "$tag" \
+                --notes-file release-notes.md
+            else
+              gh release create "$tag" \
+                --target "$GITHUB_SHA" \
+                --title "$tag" \
+                --notes-file release-notes.md
+            fi
           fi
