@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0-beta.2
+
+### Fixed
+
+- Restored a mutually compatible TypeScript, ESLint, typescript-eslint, and Vitest toolchain so Node.js 22, 24, and 26 CI checks can complete successfully.
+- Pinned the validated development-tool versions to prevent incompatible TypeScript 7 and ESLint 10 upgrades from breaking release validation.
+
+### Beta notice
+
+This release contains the controller response handling and unified discovery improvements introduced in `0.6.0-beta.1`, together with corrected release-validation dependencies. Existing configurations and cached accessory identities remain compatible.
+
 ## 0.6.0-beta.1
 
 ### Fixed

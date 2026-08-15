@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.6.0-beta.1',
+      version: '0.6.0-beta.2',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -20,6 +20,13 @@ describe('Homebridge plugin metadata', () => {
     ]);
     expect(pkg.keywords).not.toContain('supports-matter');
     expect(pkg.devDependencies.homebridge).toBe('^2.3.0');
+    expect(pkg.devDependencies).toMatchObject({
+      '@eslint/js': '9.39.5',
+      eslint: '9.39.5',
+      typescript: '5.9.3',
+      'typescript-eslint': '8.66.0',
+      vitest: '3.2.7',
+    });
     for (const field of ['dependencies', 'optionalDependencies', 'bundledDependencies', 'peerDependencies']) {
       const declaration = pkg[field];
       if (Array.isArray(declaration)) expect(declaration).not.toContain('homebridge');

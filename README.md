@@ -62,7 +62,7 @@ The current beta can be installed through the Homebridge UI version selector:
 
 1. Find `homebridge-magic-home-pro` in the Plugins page.
 2. Open the plugin's version selector.
-3. Select `0.6.0-beta.1`.
+3. Select `0.6.0-beta.2`.
 4. Complete the installation and restart Homebridge.
 
 The beta is not installed automatically. The normal stable release remains available under the npm `latest` tag.
