@@ -8,7 +8,7 @@ describe('Homebridge plugin metadata', () => {
     expect(pkg).toMatchObject({
       name: 'homebridge-magic-home-pro',
       displayName: 'Magic Home Pro',
-      version: '0.6.0-beta.2',
+      version: '0.6.0',
       main: 'dist/index.js',
       engines: { homebridge: '^2.0.0', node: '^22.10.0 || ^24.0.0 || ^26.0.0' },
     });
@@ -20,13 +20,12 @@ describe('Homebridge plugin metadata', () => {
     ]);
     expect(pkg.keywords).not.toContain('supports-matter');
     expect(pkg.devDependencies.homebridge).toBe('^2.3.0');
-    expect(pkg.devDependencies).toMatchObject({
-      '@eslint/js': '9.39.5',
-      eslint: '9.39.5',
-      typescript: '5.9.3',
-      'typescript-eslint': '8.66.0',
-      vitest: '3.2.7',
-    });
+    const dependencyMajor = (name: string): number => Number.parseInt(pkg.devDependencies[name], 10);
+    expect(dependencyMajor('@eslint/js')).toBe(9);
+    expect(dependencyMajor('eslint')).toBe(9);
+    expect([5, 6]).toContain(dependencyMajor('typescript'));
+    expect(dependencyMajor('typescript-eslint')).toBe(8);
+    expect([3, 4]).toContain(dependencyMajor('vitest'));
     for (const field of ['dependencies', 'optionalDependencies', 'bundledDependencies', 'peerDependencies']) {
       const declaration = pkg[field];
       if (Array.isArray(declaration)) expect(declaration).not.toContain('homebridge');
@@ -125,5 +124,7 @@ describe('Homebridge plugin metadata', () => {
     const dependabot = fs.readFileSync('.github/dependabot.yml', 'utf8');
     expect(dependabot).toContain('package-ecosystem: npm');
     expect(dependabot).toContain('package-ecosystem: github-actions');
+    expect(dependabot).toContain('dependency-name: typescript');
+    expect(dependabot).toContain('dependency-name: eslint');
   });
 });

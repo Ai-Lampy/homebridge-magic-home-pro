@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0
+
+### Fixed
+
+- Accumulate fragmented Magic Home TCP status responses before parsing, preserving trailing RGB+CCT and cool-white state fields.
+- Make the custom UI device scan include configured bounded subnet probing, matching normal Homebridge discovery.
+- Restore a mutually compatible TypeScript, ESLint, typescript-eslint, and Vitest validation toolchain for Node.js 22, 24, and 26.
+
+### Improved
+
+- Merge duplicate devices found through configuration, cache, UDP discovery, and subnet probing using normalized MAC or IP identity.
+- Add regression coverage for fragmented, complete, malformed, timeout, and legacy controller responses.
+- Add diagnostic discovery, subnet safety, package metadata, Config UI, and Homebridge startup coverage.
+- Add public security, contribution, dependency-update, installation-search, and network troubleshooting guidance.
+- Prevent Dependabot from proposing TypeScript 7 or ESLint 10 until the lint toolchain supports those APIs.
+
+### Compatibility
+
+Existing configurations, platform identity, cached accessory UUIDs, Apple Home room assignments, scenes, and automations remain compatible. No cache reset or re-pairing is required.
+
 ## 0.6.0-beta.2
 
 ### Fixed

@@ -56,17 +56,6 @@ No inbound port forwarding, VPN, MagicHome cloud login, or plugin-specific cloud
 > [!NOTE]
 > The complete package name may be required. General searches such as “Magic Home Pro” may not display recently published plugins because Homebridge relies on npm's ranked search results.
 
-### Installing the beta
-
-The current beta can be installed through the Homebridge UI version selector:
-
-1. Find `homebridge-magic-home-pro` in the Plugins page.
-2. Open the plugin's version selector.
-3. Select `0.6.0-beta.2`.
-4. Complete the installation and restart Homebridge.
-
-The beta is not installed automatically. The normal stable release remains available under the npm `latest` tag.
-
 ### Configuration
 
 Install through Homebridge UI, then add the platform. Defaults work on a flat LAN:
