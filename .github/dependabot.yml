@@ -11,6 +11,15 @@ updates:
         dependency-type: development
       production-dependencies:
         dependency-type: production
+    ignore:
+      # typescript-eslint 8 does not support the TypeScript 7 or ESLint 10 APIs.
+      # Remove these exclusions only after the lint stack officially supports them.
+      - dependency-name: typescript
+        versions: [">=7"]
+      - dependency-name: eslint
+        versions: [">=10"]
+      - dependency-name: "@eslint/js"
+        versions: [">=10"]
 
   - package-ecosystem: github-actions
     directory: /
