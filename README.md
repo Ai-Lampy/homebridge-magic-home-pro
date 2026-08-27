@@ -1,6 +1,7 @@
 # Homebridge Magic Home Pro
 
-[![verified-by-homebridge](https://img.shields.io/badge/homebridge-verified-blueviolet?color=%23491F59&style=for-the-badge&logoColor=%23FFFFFF&logo=homebridge)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+[![npm version](https://img.shields.io/npm/v/homebridge-magic-home-pro?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/homebridge-magic-home-pro) [![npm downloads](https://img.shields.io/npm/dt/homebridge-magic-home-pro?style=for-the-badge&label=downloads)](https://www.npmjs.com/package/homebridge-magic-home-pro) [![verified-by-homebridge](https://img.shields.io/badge/homebridge-verified-blueviolet?color=%23491F59&style=for-the-badge&logoColor=%23FFFFFF&logo=homebridge)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
 
 A local-first Homebridge dynamic platform for MagicHome/LEDnet-compatible Wi-Fi lights and controllers. It communicates only over your LAN: there is no MagicHome login, cloud token, fixed regional hostname, region allowlist, telemetry, or runtime controller-definition download.
 
