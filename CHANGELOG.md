@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.1
+
+### Added
+
+- Add PayPal funding metadata so the Homebridge UI can display the Donate button for the verified plugin.
+- Add the official Verified by Homebridge badge to the README.
+
 ## 0.6.0
 
 ### Fixed
