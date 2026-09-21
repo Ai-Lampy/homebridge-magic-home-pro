@@ -26,7 +26,7 @@ describe('Homebridge plugin metadata', () => {
     expect(dependencyMajor('eslint')).toBe(9);
     expect([5, 6]).toContain(dependencyMajor('typescript'));
     expect(dependencyMajor('typescript-eslint')).toBe(8);
-    expect([3, 4]).toContain(dependencyMajor('vitest'));
+    expect(dependencyMajor('vitest')).toBe(5);
     for (const field of ['dependencies', 'optionalDependencies', 'bundledDependencies', 'peerDependencies']) {
       const declaration = pkg[field];
       if (Array.isArray(declaration)) expect(declaration).not.toContain('homebridge');
