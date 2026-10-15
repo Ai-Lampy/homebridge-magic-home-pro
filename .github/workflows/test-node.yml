@@ -42,3 +42,14 @@ jobs:
 
       - name: Inspect installable package
         run: npm pack --dry-run --ignore-scripts
+
+  supported-node-checks:
+    name: Node.js 22 Node.js 24 Node.js 26
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm all supported Node.js checks passed
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+        run: test "$TEST_RESULT" = "success"
