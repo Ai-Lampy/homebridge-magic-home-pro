@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@homebridge/plugin-ui-utils':
         specifier: ^2.0.0
-        version: 2.2.7
+        version: 2.3.0
     devDependencies:
       '@eslint/js':
         specifier: 9.39.5
@@ -246,8 +246,8 @@ packages:
     resolution: {integrity: sha512-9TqyGMf0ad5HMob0yMIppDcdK18TZ0+nz7LjQKnfiMEmPnkvhXfxNiyIxNQt81HoqXNjE9MQ3ltM3/s4VlnV9w==}
     engines: {node: ^22.12.0 || ^24 || ^26}
 
-  '@homebridge/plugin-ui-utils@2.2.7':
-    resolution: {integrity: sha512-sgg6YVjx+FIRiV0y27lLmCe4/bMqqzAHcfXLafEPMXSpUZW9G4upXAQcEknUA3KbLTOy/rP/pS3A6TUs1mJioQ==}
+  '@homebridge/plugin-ui-utils@2.3.0':
+    resolution: {integrity: sha512-kWF8hs3rZN06B92Kd2+s4s2/brdlvd/XTOy3viiV6EKm46wHMVTSA+Fs9ncUAEzbWcHjThaschJ97t4WjPp/ZA==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1326,7 +1326,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@homebridge/plugin-ui-utils@2.2.7': {}
+  '@homebridge/plugin-ui-utils@2.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:
